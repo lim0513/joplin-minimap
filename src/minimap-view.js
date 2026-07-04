@@ -96,6 +96,11 @@
 			item.appendChild(label);
 
 			item.addEventListener('click', function () {
+				// Clicking gives the webview focus; whatever element held focus
+				// inside the page (Joplin's scroll container) would show a
+				// focus outline. Drop it - the minimap never needs focus.
+				var ae = document.activeElement;
+				if (ae && ae !== document.body && typeof ae.blur === 'function') ae.blur();
 				h.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			});
 
