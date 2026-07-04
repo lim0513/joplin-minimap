@@ -1,0 +1,6 @@
+node_modules/
+dist/
+/*.jpl
+
+# Build outputs
+publish/

@@ -1,0 +1,115 @@
+/* Joplin Minimap — collapsed tick bars, hover-expanded ToC panel.
+ * Colors use currentColor / rgba so it follows both light and dark themes.
+ */
+
+#jp-minimap {
+	user-select: none;
+	-webkit-user-select: none;
+	caret-color: transparent;
+	cursor: default;
+	position: fixed;
+	top: 50%;
+	right: 6px;
+	transform: translateY(-50%);
+	z-index: 9999;
+	font-size: 12.5px;
+	line-height: 1.35;
+	color: inherit;
+}
+
+.jp-mm-list {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	padding: 8px 6px;
+	max-height: 84vh;
+	overflow: hidden;
+	border-radius: 10px;
+	transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.jp-mm-item {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 3px 4px;
+	border-radius: 6px;
+	text-decoration: none;
+	color: inherit;
+	opacity: 0.5;
+	cursor: pointer;
+	outline: none;
+}
+
+/* ---- collapsed state: tick bars, width by heading level ---- */
+
+.jp-mm-bar {
+	display: block;
+	height: 2px;
+	border-radius: 1px;
+	background: currentColor;
+}
+
+.jp-mm-l1 .jp-mm-bar { width: 18px; }
+.jp-mm-l2 .jp-mm-bar { width: 13px; }
+.jp-mm-l3 .jp-mm-bar { width: 9px; }
+.jp-mm-l4 .jp-mm-bar { width: 7px; }
+.jp-mm-l5 .jp-mm-bar { width: 5px; }
+.jp-mm-l6 .jp-mm-bar { width: 5px; }
+
+.jp-mm-label { display: none; }
+
+/* ---- expanded state (hover) ---- */
+
+#jp-minimap:hover .jp-mm-list {
+	align-items: stretch;
+	overflow-y: auto;
+	background: rgba(127, 127, 127, 0.16);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	box-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);
+}
+
+#jp-minimap:hover .jp-mm-bar { display: none; }
+
+#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }
+
+#jp-minimap:hover .jp-mm-label {
+	display: block;
+	max-width: 240px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* indent by heading level when expanded */
+#jp-minimap:hover .jp-mm-l2 { padding-left: 16px; }
+#jp-minimap:hover .jp-mm-l3 { padding-left: 28px; }
+#jp-minimap:hover .jp-mm-l4 { padding-left: 40px; }
+#jp-minimap:hover .jp-mm-l5 { padding-left: 52px; }
+#jp-minimap:hover .jp-mm-l6 { padding-left: 52px; }
+
+/* ---- shared states ---- */
+
+.jp-mm-item:hover {
+	opacity: 1;
+	background: rgba(127, 127, 127, 0.22);
+}
+
+.jp-mm-active { opacity: 1; }
+
+#jp-minimap:hover .jp-mm-active {
+	background: rgba(127, 127, 127, 0.18);
+}
+
+/* slim scrollbar in the expanded panel */
+.jp-mm-list::-webkit-scrollbar { width: 4px; }
+.jp-mm-list::-webkit-scrollbar-thumb {
+	background: rgba(127, 127, 127, 0.4);
+	border-radius: 2px;
+}
+
+/* don't show over printed/exported output */
+@media print {
+	#jp-minimap { display: none; }
+}

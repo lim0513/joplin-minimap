@@ -1,0 +1,17 @@
+{
+  "name": "joplin-plugin-minimap",
+  "version": "1.0.0",
+  "description": "A hover-to-expand table of contents minimap for the Joplin note viewer",
+  "author": "lim0513",
+  "homepage": "https://github.com/lim0513/joplin-minimap",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lim0513/joplin-minimap.git"
+  },
+  "scripts": {
+    "dist": "node build.js && node scripts/pack-jpl.js"
+  },
+  "keywords": ["joplin-plugin", "joplin", "toc", "outline", "minimap", "table-of-contents", "viewer"],
+  "license": "MIT",
+  "files": ["publish"]
+}
