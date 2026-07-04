@@ -61,7 +61,8 @@ scripts/pack-jpl.js        gzip-tars publish/ -> publish/plugin.jpl
 3. **The viewer DOM can be editable in some contexts.** Symptom: text caret visible in the expanded panel, keyboard input lands in it. Defenses (all needed): `contenteditable="false"` on the nav, `preventDefault()` on `mousedown` (stops caret placement/focus), CSS `user-select: none` + `caret-color: transparent`, `tabIndex = -1` on items.
 4. **Scroll listeners accumulate across rebuilds.** Each `build()` registers a scroll handler for active-section highlighting; the previous one must be removed first (the `cleanup` closure). The listener uses `capture: true` because it's unknown which container actually scrolls.
 5. **Never use `<a>` elements inside the rendered viewer.** Joplin shows a "Ctrl+click to open" (按住Ctrl打开) tooltip on anchors and routes them through its external-link handling. Minimap items are `<div>`s with click handlers.
-6. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
+6. **The viewer's overlay scrollbar eats clicks.** On Windows 11 (and other overlay-scrollbar environments) the note viewer's scrollbar reserves no layout space but hit-tests ABOVE page content — z-index cannot beat it. Symptom: clicking the rightmost strip of the expanded panel does nothing. Fix: `scrollbarGap()` shifts the whole nav left of the scrollbar zone (measured width, or 14px fallback for overlay scrollbars). Apply the shift in both collapsed and expanded states — shifting only on hover moves the panel out from under the cursor and causes a hover/unhover flicker loop.
+7. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
 
 ## Settings plumbing
 

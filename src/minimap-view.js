@@ -25,6 +25,24 @@
 
 	var cleanup = null; // removes listeners belonging to the current build
 
+	// Width of the note viewer's right-edge scrollbar zone. Overlay scrollbars
+	// (e.g. Windows 11) reserve no layout space but still intercept clicks with
+	// priority over page content, so when nothing is measurable we keep a safety
+	// gap anyway. The minimap must stay clear of that zone or clicks on the
+	// rightmost part of the panel silently hit the scrollbar instead.
+	function scrollbarGap(root) {
+		var gap = 0;
+		var node = root;
+		while (node && node !== document.documentElement) {
+			if (node.scrollHeight > node.clientHeight + 1) {
+				var w = node.offsetWidth - node.clientWidth;
+				if (w > gap) gap = w;
+			}
+			node = node.parentElement;
+		}
+		return gap > 0 ? gap : 14;
+	}
+
 	function build() {
 		if (cleanup) { cleanup(); cleanup = null; }
 
@@ -39,7 +57,10 @@
 
 		var nav = document.createElement('nav');
 		nav.id = 'jp-minimap';
-		nav.style.right = settings.rightOffset + 'px';
+		// Applied in BOTH collapsed and expanded states: shifting only on hover
+		// would move the panel out from under the cursor and cause a
+		// hover/unhover flicker loop.
+		nav.style.right = (settings.rightOffset + scrollbarGap(root)) + 'px';
 		nav.style.setProperty('--jp-mm-width', settings.panelWidth + 'px');
 		// The viewer DOM can be editable in some contexts; make sure the
 		// minimap never shows a caret or accepts keyboard input.
