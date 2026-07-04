@@ -10,7 +10,7 @@ const TYPE_INT = 1;
 joplin.plugins.register({
 	onStart: async function () {
 		await joplin.settings.registerSection('minimap', {
-			label: 'Minimap',
+			label: 'Joplin Minimap',
 			iconName: 'fas fa-list',
 		});
 

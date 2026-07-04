@@ -46,7 +46,7 @@ A markdown-it content script injects two assets into the rendered viewer: `minim
 
 ## Settings
 
-Configurable in **Tools → Options → Minimap**:
+Configurable in **Tools → Options → Joplin Minimap**:
 
 - **Minimum headings** — hide the minimap when the note has fewer headings than this (default 2)
 - **Expanded panel width (px)** — maximum width of the hover-expanded table of contents (default 240)
