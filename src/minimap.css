@@ -76,7 +76,7 @@
 
 #jp-minimap:hover .jp-mm-label {
 	display: block;
-	max-width: 240px;
+	max-width: var(--jp-mm-width, 240px);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

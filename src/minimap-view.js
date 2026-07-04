@@ -6,7 +6,18 @@
 (function () {
 	'use strict';
 
-	var MIN_HEADINGS = 2; // don't show the minimap for notes with fewer headings
+	// Defaults; overridden from Joplin's plugin settings (Tools > Options > Minimap)
+	// when webviewApi is available in this webview.
+	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6 };
+
+	function loadSettings() {
+		if (typeof webviewApi === 'undefined' || !webviewApi.postMessage) {
+			return Promise.resolve();
+		}
+		return webviewApi.postMessage('joplin-minimap', 'getSettings').then(function (s) {
+			if (s && typeof s.minHeadings === 'number') settings = s;
+		}).catch(function () { /* keep defaults (e.g. print/export context) */ });
+	}
 
 	// Only ever install one instance of the watcher per webview session.
 	if (window.__jpMinimapInstalled) return;
@@ -24,10 +35,12 @@
 		var headings = Array.prototype.slice.call(
 			root.querySelectorAll('h1, h2, h3, h4, h5, h6')
 		);
-		if (headings.length < MIN_HEADINGS) return;
+		if (headings.length < settings.minHeadings) return;
 
 		var nav = document.createElement('nav');
 		nav.id = 'jp-minimap';
+		nav.style.right = settings.rightOffset + 'px';
+		nav.style.setProperty('--jp-mm-width', settings.panelWidth + 'px');
 		// The viewer DOM can be editable in some contexts; make sure the
 		// minimap never shows a caret or accepts keyboard input.
 		nav.setAttribute('contenteditable', 'false');
@@ -83,10 +96,14 @@
 		};
 	}
 
+	function settingsAndBuild() {
+		loadSettings().then(build);
+	}
+
 	var timer = null;
 	function scheduleBuild() {
 		clearTimeout(timer);
-		timer = setTimeout(build, 150);
+		timer = setTimeout(settingsAndBuild, 150);
 	}
 
 	// True if a mutation was caused by the minimap itself (avoid rebuild loops).
@@ -113,7 +130,7 @@
 		});
 		mo.observe(document.body, { childList: true, subtree: true });
 
-		build();
+		settingsAndBuild();
 	}
 
 	if (document.readyState === 'loading') {

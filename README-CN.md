@@ -44,10 +44,15 @@
 
 通过 markdown-it content script 向渲染视图注入两个资源:`minimap-view.js` 在每次渲染后从 `h1`–`h6` 元素动态构建 minimap,`minimap.css` 负责收起/展开样式。不改动 Markdown 渲染本身。
 
-## 可调参数
+## 设置
 
-- `src/minimap-view.js` → `MIN_HEADINGS`:显示 minimap 所需的最少标题数(默认 2)
-- `src/minimap.css` → `max-width: 240px`:展开面板宽度;`right: 6px`:距右边缘距离
+在 **工具 → 选项 → Minimap** 中配置:
+
+- **最少标题数** — 笔记标题少于此数时不显示 minimap(默认 2)
+- **展开面板宽度 (px)** — 悬停展开目录的最大宽度(默认 240)
+- **距右边缘距离 (px)** — minimap 与阅读视图右边缘的间距(默认 6)
+
+修改后在下次渲染时生效(切换笔记或编辑内容即可)。
 
 ## 开发
 

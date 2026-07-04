@@ -63,6 +63,10 @@ scripts/pack-jpl.js        gzip-tars publish/ -> publish/plugin.jpl
 5. **Never use `<a>` elements inside the rendered viewer.** Joplin shows a "Ctrl+click to open" (按住Ctrl打开) tooltip on anchors and routes them through its external-link handling. Minimap items are `<div>`s with click handlers.
 6. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
 
+## Settings plumbing
+
+Settings are registered in `src/index.js` (`joplin.settings.registerSection/registerSettings`, `SettingItemType.Int = 1` as a raw number — no `api` import in plain JS). The viewer asset cannot call `joplin.settings` directly; it fetches values with `webviewApi.postMessage('joplin-minimap', 'getSettings')`, answered by `joplin.contentScripts.onMessage` in the entry. `webviewApi` is NOT always defined in the rendered webview (print/export) — always guard and fall back to defaults. Settings are re-fetched before every rebuild, so changes apply on the next render, not instantly.
+
 ## Behavior contract
 
 - Minimap only appears in the rendered Markdown viewer (reading view / split-editor preview). Not in the Markdown editor, not in the Rich Text editor.

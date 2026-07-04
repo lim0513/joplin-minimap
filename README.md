@@ -44,10 +44,15 @@ Note: the minimap only appears in the rendered viewer, not in the plain Markdown
 
 A markdown-it content script injects two assets into the rendered viewer: `minimap-view.js` builds the minimap dynamically from the rendered `h1`–`h6` elements after each render, and `minimap.css` handles the collapsed/expanded styling. The Markdown rendering itself is untouched.
 
-## Customization
+## Settings
 
-- `src/minimap-view.js` → `MIN_HEADINGS`: minimum number of headings required to show the minimap (default 2)
-- `src/minimap.css` → `max-width: 240px`: width of the expanded panel; `right: 6px`: distance from the right edge
+Configurable in **Tools → Options → Minimap**:
+
+- **Minimum headings** — hide the minimap when the note has fewer headings than this (default 2)
+- **Expanded panel width (px)** — maximum width of the hover-expanded table of contents (default 240)
+- **Distance from right edge (px)** — gap between the minimap and the viewer's right edge (default 6)
+
+Changed settings apply on the next render (switch notes or edit the note).
 
 ## Development
 
