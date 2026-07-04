@@ -39,10 +39,10 @@
 		var items = headings.map(function (h) {
 			var level = Number(h.tagName.charAt(1));
 
-			var item = document.createElement('a');
+			// NOT an <a>: Joplin's viewer shows a "Ctrl+click to open" tooltip
+			// on anchors and treats them as external links.
+			var item = document.createElement('div');
 			item.className = 'jp-mm-item jp-mm-l' + level;
-			item.href = 'javascript:;';
-			item.tabIndex = -1;
 
 			var bar = document.createElement('span');
 			bar.className = 'jp-mm-bar';
@@ -54,8 +54,7 @@
 			item.appendChild(bar);
 			item.appendChild(label);
 
-			item.addEventListener('click', function (e) {
-				e.preventDefault();
+			item.addEventListener('click', function () {
 				h.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			});
 

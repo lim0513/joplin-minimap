@@ -60,7 +60,8 @@ scripts/pack-jpl.js        gzip-tars publish/ -> publish/plugin.jpl
 2. **The rebuild must not trigger itself.** The MutationObserver sees the minimap's own DOM insertion/removal. `isOwnMutation()` filters mutations whose target/added/removed nodes are inside `#jp-minimap` — removing it causes an infinite rebuild loop.
 3. **The viewer DOM can be editable in some contexts.** Symptom: text caret visible in the expanded panel, keyboard input lands in it. Defenses (all needed): `contenteditable="false"` on the nav, `preventDefault()` on `mousedown` (stops caret placement/focus), CSS `user-select: none` + `caret-color: transparent`, `tabIndex = -1` on items.
 4. **Scroll listeners accumulate across rebuilds.** Each `build()` registers a scroll handler for active-section highlighting; the previous one must be removed first (the `cleanup` closure). The listener uses `capture: true` because it's unknown which container actually scrolls.
-5. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
+5. **Never use `<a>` elements inside the rendered viewer.** Joplin shows a "Ctrl+click to open" (按住Ctrl打开) tooltip on anchors and routes them through its external-link handling. Minimap items are `<div>`s with click handlers.
+6. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
 
 ## Behavior contract
 
