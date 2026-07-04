@@ -45,6 +45,13 @@
 		// minimap never shows a caret or accepts keyboard input.
 		nav.setAttribute('contenteditable', 'false');
 		nav.addEventListener('mousedown', function (e) { e.preventDefault(); });
+		// Own the wheel entirely while the cursor is over the minimap:
+		// scroll the ToC list ourselves and never let the event chain
+		// through to the note underneath (scroll chaining feels erratic).
+		nav.addEventListener('wheel', function (e) {
+			e.preventDefault();
+			list.scrollTop += e.deltaY;
+		}, { passive: false });
 
 		var list = document.createElement('div');
 		list.className = 'jp-mm-list';

@@ -64,6 +64,7 @@
 #jp-minimap:hover .jp-mm-list {
 	align-items: stretch;
 	overflow-y: auto;
+	overscroll-behavior: contain;
 	background: rgba(127, 127, 127, 0.16);
 	backdrop-filter: blur(10px);
 	-webkit-backdrop-filter: blur(10px);
