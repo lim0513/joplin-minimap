@@ -14,8 +14,9 @@ joplin.plugins.register({
 			iconName: 'fas fa-list',
 		});
 
-		await joplin.settings.registerSettings({
-			'minimap.minHeadings': {
+		try {
+			await joplin.settings.registerSettings({
+			'minimapMinHeadings': {
 				value: 2,
 				minimum: 1,
 				type: TYPE_INT,
@@ -24,7 +25,7 @@ joplin.plugins.register({
 				label: 'Minimum headings',
 				description: 'Hide the minimap when the note has fewer headings than this. Default: 2.',
 			},
-			'minimap.panelWidth': {
+			'minimapPanelWidth': {
 				value: 240,
 				minimum: 120,
 				type: TYPE_INT,
@@ -33,7 +34,7 @@ joplin.plugins.register({
 				label: 'Expanded panel width (px)',
 				description: 'Maximum width of the hover-expanded table of contents. Default: 240.',
 			},
-			'minimap.rightOffset': {
+			'minimapRightOffset': {
 				value: 6,
 				minimum: 0,
 				type: TYPE_INT,
@@ -42,7 +43,10 @@ joplin.plugins.register({
 				label: 'Distance from right edge (px)',
 				description: 'Gap between the minimap and the right edge of the viewer. Default: 6.',
 			},
-		});
+			});
+		} catch (error) {
+			console.error('Joplin Minimap: registerSettings failed:', error);
+		}
 
 		await joplin.contentScripts.register(
 			'markdownItPlugin',
@@ -53,9 +57,9 @@ joplin.plugins.register({
 		await joplin.contentScripts.onMessage('joplin-minimap', async function (message) {
 			if (message === 'getSettings') {
 				return {
-					minHeadings: await joplin.settings.value('minimap.minHeadings'),
-					panelWidth: await joplin.settings.value('minimap.panelWidth'),
-					rightOffset: await joplin.settings.value('minimap.rightOffset'),
+					minHeadings: await joplin.settings.value('minimapMinHeadings'),
+					panelWidth: await joplin.settings.value('minimapPanelWidth'),
+					rightOffset: await joplin.settings.value('minimapRightOffset'),
 				};
 			}
 			return null;
