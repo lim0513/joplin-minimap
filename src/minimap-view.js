@@ -32,19 +32,6 @@
 	// after a click (the re-render case), the jump is re-applied afterwards.
 	var pendingJump = null; // { index, text, until }
 
-	// After a press on the minimap, Joplin may programmatically focus its
-	// scroll container (focus ring appears behind the panel). Intercept any
-	// focus landing outside the minimap for a short window and drop it.
-	var suppressFocusUntil = 0;
-	document.addEventListener('focusin', function (e) {
-		if (Date.now() > suppressFocusUntil) return;
-		var t = e.target;
-		if (t && t !== document.body && (!t.closest || !t.closest('#jp-minimap')) &&
-			typeof t.blur === 'function') {
-			t.blur();
-		}
-	}, true);
-
 	function liveHeadings() {
 		var root = document.getElementById('rendered-md') || document.body;
 		return Array.prototype.slice.call(root.querySelectorAll('h1, h2, h3, h4, h5, h6'));
@@ -100,8 +87,11 @@
 		nav.style.setProperty('--jp-mm-width', settings.panelWidth + 'px');
 		// The viewer DOM can be editable in some contexts; make sure the
 		// minimap never shows a caret or accepts keyboard input.
+		// NOTE: no preventDefault on mousedown! Blocking the default mouse-focus
+		// path makes Joplin's later programmatic focus count as keyboard-like,
+		// and the browser then draws a :focus-visible ring on the scroll
+		// container. Natural mouse focus never shows a ring.
 		nav.setAttribute('contenteditable', 'false');
-		nav.addEventListener('mousedown', function (e) { e.preventDefault(); });
 		// Own the wheel entirely while the cursor is over the minimap:
 		// scroll the ToC list ourselves and never let the event chain
 		// through to the note underneath (scroll chaining feels erratic).
@@ -137,10 +127,6 @@
 			// never fires. mousedown runs before any of that can happen.
 			item.addEventListener('mousedown', function (e) {
 				if (e.button !== 0) return;
-				// Drop focus so Joplin's scroll container doesn't show an outline.
-				var ae = document.activeElement;
-				if (ae && ae !== document.body && typeof ae.blur === 'function') ae.blur();
-				suppressFocusUntil = Date.now() + 600;
 				var text = (label.textContent || '').trim();
 				// If the press triggers a note re-render, the rebuild will
 				// re-apply this jump against the fresh DOM.
