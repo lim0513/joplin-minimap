@@ -118,14 +118,17 @@
 			item.appendChild(bar);
 			item.appendChild(label);
 
-			item.addEventListener('click', function () {
-				// Clicking gives the webview focus; whatever element held focus
-				// inside the page (Joplin's scroll container) would show a
-				// focus outline. Drop it - the minimap never needs focus.
+			// MOUSEDOWN, not click: the press gives the webview focus, Joplin may
+			// re-render the note, and our panel gets rebuilt BETWEEN mousedown and
+			// mouseup - so the click event (which needs the same target for both)
+			// never fires. mousedown runs before any of that can happen.
+			item.addEventListener('mousedown', function (e) {
+				if (e.button !== 0) return;
+				// Drop focus so Joplin's scroll container doesn't show an outline.
 				var ae = document.activeElement;
 				if (ae && ae !== document.body && typeof ae.blur === 'function') ae.blur();
 				var text = (label.textContent || '').trim();
-				// If the click triggers a note re-render, the rebuild will
+				// If the press triggers a note re-render, the rebuild will
 				// re-apply this jump against the fresh DOM.
 				pendingJump = { index: index, text: text, until: Date.now() + 1200 };
 				jumpTo(index, text);
