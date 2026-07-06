@@ -103,12 +103,11 @@
 	background: rgba(127, 127, 127, 0.18);
 }
 
-/* slim scrollbar in the expanded panel */
-.jp-mm-list::-webkit-scrollbar { width: 4px; }
-.jp-mm-list::-webkit-scrollbar-thumb {
-	background: rgba(127, 127, 127, 0.4);
-	border-radius: 2px;
-}
+/* No scrollbar in the expanded panel: the wheel handler owns scrolling,
+ * and a visible scrollbar at the panel edge invites overlay-scrollbar
+ * style hover/click interference. */
+.jp-mm-list::-webkit-scrollbar { display: none; }
+.jp-mm-list { scrollbar-width: none; }
 
 /* don't show over printed/exported output */
 @media print {
