@@ -25,6 +25,29 @@
 
 	var cleanup = null; // removes listeners belonging to the current build
 
+	// Clicking the minimap gives the webview focus, which can make Joplin
+	// re-render the whole note. That detaches every heading element we hold,
+	// and scrollIntoView on a detached node is a silent no-op. So jumps are
+	// index/text-based against the LIVE DOM, and if a rebuild happens right
+	// after a click (the re-render case), the jump is re-applied afterwards.
+	var pendingJump = null; // { index, text, until }
+
+	function liveHeadings() {
+		var root = document.getElementById('rendered-md') || document.body;
+		return Array.prototype.slice.call(root.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+	}
+
+	function jumpTo(index, text) {
+		var hs = liveHeadings();
+		var h = hs[index];
+		if (!h || (text && (h.textContent || '').trim() !== text)) {
+			for (var i = 0; i < hs.length; i++) {
+				if ((hs[i].textContent || '').trim() === text) { h = hs[i]; break; }
+			}
+		}
+		if (h && h.isConnected) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	// Width of the note viewer's right-edge scrollbar zone. Overlay scrollbars
 	// (e.g. Windows 11) reserve no layout space but still intercept clicks with
 	// priority over page content, so when nothing is measurable we keep a safety
@@ -77,7 +100,7 @@
 		var list = document.createElement('div');
 		list.className = 'jp-mm-list';
 
-		var items = headings.map(function (h) {
+		var items = headings.map(function (h, index) {
 			var level = Number(h.tagName.charAt(1));
 
 			// NOT an <a>: Joplin's viewer shows a "Ctrl+click to open" tooltip
@@ -101,7 +124,11 @@
 				// focus outline. Drop it - the minimap never needs focus.
 				var ae = document.activeElement;
 				if (ae && ae !== document.body && typeof ae.blur === 'function') ae.blur();
-				h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				var text = (label.textContent || '').trim();
+				// If the click triggers a note re-render, the rebuild will
+				// re-apply this jump against the fresh DOM.
+				pendingJump = { index: index, text: text, until: Date.now() + 1200 };
+				jumpTo(index, text);
 			});
 
 			list.appendChild(item);
@@ -123,6 +150,13 @@
 
 		document.addEventListener('scroll', updateActive, { passive: true, capture: true });
 		updateActive();
+
+		// A rebuild arriving right after a click means the note was re-rendered
+		// and the original scrollIntoView hit a detached node - redo the jump.
+		if (pendingJump && Date.now() < pendingJump.until) {
+			jumpTo(pendingJump.index, pendingJump.text);
+			pendingJump = null;
+		}
 
 		cleanup = function () {
 			document.removeEventListener('scroll', updateActive, { capture: true });
