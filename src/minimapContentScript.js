@@ -10,8 +10,10 @@ module.exports = {
 				// intentionally empty — rendering is untouched
 			},
 			assets: function () {
+				// CSS is injected by minimap-view.js itself (see ensureStyle) so
+				// that a re-render which drops asset stylesheets cannot leave an
+				// unstyled nav in the document flow.
 				return [
-					{ name: 'minimap.css' },
 					{ name: 'minimap-view.js' },
 				];
 			},

@@ -25,6 +25,22 @@
 
 	var cleanup = null; // removes listeners belonging to the current build
 
+	// The stylesheet is injected BY THIS SCRIPT and re-checked on every build.
+	// Rationale: Joplin can re-render the document in ways that drop injected
+	// asset stylesheets while this script's watcher survives - the rebuilt nav
+	// then renders UNSTYLED as flow content below the note (looks like a
+	// duplicated outline under the document). Keeping the CSS inline and
+	// re-injecting guarantees the nav and its styling live and die together.
+	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n}\n\n/* indent by heading level when expanded */\n#jp-minimap:hover .jp-mm-l2 { padding-left: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-left: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-left: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-left: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-left: 52px; }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
+
+	function ensureStyle() {
+		if (document.getElementById('jp-minimap-style')) return;
+		var styleEl = document.createElement('style');
+		styleEl.id = 'jp-minimap-style';
+		styleEl.textContent = MINIMAP_CSS;
+		(document.head || document.documentElement).appendChild(styleEl);
+	}
+
 	// Clicking the minimap gives the webview focus, which can make Joplin
 	// re-render the whole note. That detaches every heading element we hold,
 	// and scrollIntoView on a detached node is a silent no-op. So jumps are
@@ -68,6 +84,7 @@
 
 	function build() {
 		if (cleanup) { cleanup(); cleanup = null; }
+		ensureStyle();
 
 		var old = document.getElementById('jp-minimap');
 		if (old) old.remove();
