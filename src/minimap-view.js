@@ -208,6 +208,16 @@
 		// Joplin fires this after each note render/update.
 		document.addEventListener('joplin-noteDidUpdate', scheduleBuild);
 
+		// Joplin's asset cleanup can remove our <style> from <head> AFTER the
+		// last body mutation - nothing rebuilds, and the nav sits unstyled in
+		// the page (the "outline below the document" bug, second incarnation:
+		// v1.1.4 only re-checked the style during rebuilds). Watch the head
+		// and re-inject immediately.
+		var headObserver = new MutationObserver(function () {
+			if (!document.getElementById('jp-minimap-style')) ensureStyle();
+		});
+		if (document.head) headObserver.observe(document.head, { childList: true });
+
 		// Fallback: watch for the rendered content being swapped out
 		// (note switch replaces the DOM without re-running this script).
 		var mo = new MutationObserver(function (mutations) {
