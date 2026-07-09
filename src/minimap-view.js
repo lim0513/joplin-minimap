@@ -19,6 +19,22 @@
 		}).catch(function () { /* keep defaults (e.g. print/export context) */ });
 	}
 
+	// NEVER run inside an editable context (the Rich Text editor renders
+	// notes through the same pipeline and would execute this asset). If the
+	// nav lands in the RTE document, Joplin's HTML->markdown round-trip
+	// SERIALIZES it into the note body on save - the heading list becomes
+	// real note content and syncs to every device. This was the true root
+	// cause of the "outline below the document" reports.
+	function isEditableContext() {
+		var b = document.body;
+		if (!b) return false;
+		if (b.isContentEditable) return true;
+		if (b.id === 'tinymce') return true;
+		if (b.classList && b.classList.contains('mce-content-body')) return true;
+		return false;
+	}
+	if (isEditableContext()) return;
+
 	// Only ever install one instance of the watcher per webview session.
 	if (window.__jpMinimapInstalled) return;
 	window.__jpMinimapInstalled = true;
@@ -84,6 +100,11 @@
 
 	function build() {
 		if (cleanup) { cleanup(); cleanup = null; }
+		if (isEditableContext()) {
+			var stale = document.getElementById('jp-minimap');
+			if (stale) stale.remove();
+			return;
+		}
 		ensureStyle();
 
 		var old = document.getElementById('jp-minimap');
