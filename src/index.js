@@ -19,7 +19,7 @@ const SETTINGS_I18N = {
 		rightOffset: 'Distance from right edge (px)',
 		rightOffsetDesc: 'Gap between the minimap and the right edge of the viewer. Default: 6.',
 		showTodos: 'Show to-do markers',
-		showTodosDesc: 'Mark checkbox items on the minimap: a filled dot for open to-dos, a hollow dot for completed ones. Default: on.',
+		showTodosDesc: 'Show a small red dot before a section\'s tick bar when it contains open to-dos. Default: on.',
 	},
 	zh_CN: {
 		minHeadings: '最少标题数',
@@ -29,7 +29,7 @@ const SETTINGS_I18N = {
 		rightOffset: '距右边缘距离（px）',
 		rightOffsetDesc: '小地图与阅读器右边缘的间距。默认 6。',
 		showTodos: '显示待办标记',
-		showTodosDesc: '在小地图上标出复选框项：未完成待办为实心圆点，已完成为空心圆点。默认开启。',
+		showTodosDesc: '当章节内含未完成待办时，在该章节横线前显示一个小红点提醒。默认开启。',
 	},
 	zh_TW: {
 		minHeadings: '最少標題數',
@@ -39,7 +39,7 @@ const SETTINGS_I18N = {
 		rightOffset: '距右邊緣距離（px）',
 		rightOffsetDesc: '小地圖與檢視器右邊緣的間距。預設 6。',
 		showTodos: '顯示待辦標記',
-		showTodosDesc: '在小地圖上標出核取方塊項：未完成待辦為實心圓點，已完成為空心圓點。預設開啟。',
+		showTodosDesc: '當章節內含未完成待辦時，在該章節橫線前顯示一個小紅點提醒。預設開啟。',
 	},
 	ru: {
 		minHeadings: 'Минимум заголовков',
@@ -49,7 +49,7 @@ const SETTINGS_I18N = {
 		rightOffset: 'Отступ от правого края (px)',
 		rightOffsetDesc: 'Зазор между миникартой и правым краем просмотра. По умолчанию: 6.',
 		showTodos: 'Показывать метки задач',
-		showTodosDesc: 'Отмечать пункты-флажки на миникарте: закрашенная точка — открытая задача, полая — выполненная. По умолчанию: вкл.',
+		showTodosDesc: 'Показывать маленькую красную точку перед линией раздела, если в нём есть открытые задачи. По умолчанию: вкл.',
 	},
 	ja_JP: {
 		minHeadings: '最小見出し数',
@@ -59,7 +59,7 @@ const SETTINGS_I18N = {
 		rightOffset: '右端からの距離（px）',
 		rightOffsetDesc: 'ミニマップとビューアー右端の間隔。既定値：6。',
 		showTodos: 'ToDoマーカーを表示',
-		showTodosDesc: 'ミニマップにチェックボックス項目を表示：未完了は塗りつぶし、完了は白抜きの点。既定値：オン。',
+		showTodosDesc: '未完了のToDoを含むセクションの線の前に小さな赤い点を表示します。既定値：オン。',
 	},
 };
 
