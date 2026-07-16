@@ -8,7 +8,7 @@
 
 	// Defaults; overridden from Joplin's plugin settings (Tools > Options > Minimap)
 	// when webviewApi is available in this webview.
-	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6 };
+	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, showTodos: true };
 
 	function loadSettings() {
 		if (typeof webviewApi === 'undefined' || !webviewApi.postMessage) {
@@ -47,7 +47,7 @@
 	// then renders UNSTYLED as flow content below the note (looks like a
 	// duplicated outline under the document). Keeping the CSS inline and
 	// re-injecting guarantees the nav and its styling live and die together.
-	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n}\n\n/* indent by heading level when expanded */\n#jp-minimap:hover .jp-mm-l2 { padding-left: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-left: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-left: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-left: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-left: 52px; }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
+	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n}\n\n/* indent by heading level when expanded */\n#jp-minimap:hover .jp-mm-l2 { padding-left: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-left: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-left: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-left: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-left: 52px; }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- to-do markers ---- */\n.jp-mm-todo .jp-mm-bar { display: none; }\n.jp-mm-dot { display: block; width: 6px; height: 6px; border-radius: 50%; box-sizing: border-box; }\n.jp-mm-todo-open .jp-mm-dot { background: #4c8dff; }\n.jp-mm-todo-done .jp-mm-dot { background: transparent; border: 1.5px solid rgba(127,127,127,0.7); opacity: 0.7; }\n#jp-minimap:hover .jp-mm-dot { display: none; }\n#jp-minimap:hover .jp-mm-todo { padding-left: 20px; }\n.jp-mm-todo-open .jp-mm-label { opacity: 1; }\n.jp-mm-todo-done .jp-mm-label { text-decoration: line-through; opacity: 0.6; }\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
 
 	function ensureStyle() {
 		if (document.getElementById('jp-minimap-style')) return;
@@ -62,22 +62,43 @@
 	// and scrollIntoView on a detached node is a silent no-op. So jumps are
 	// index/text-based against the LIVE DOM, and if a rebuild happens right
 	// after a click (the re-render case), the jump is re-applied afterwards.
-	var pendingJump = null; // { index, text, until }
+	var pendingJump = null; // { type, index, text, until }
 
-	function liveHeadings() {
-		var root = document.getElementById('rendered-md') || document.body;
+	function rootEl() {
+		return document.getElementById('rendered-md') || document.body;
+	}
+
+	function liveNodes(type) {
+		var root = rootEl();
+		if (type === 'todo') {
+			return Array.prototype.slice.call(root.querySelectorAll('input[type="checkbox"]'));
+		}
 		return Array.prototype.slice.call(root.querySelectorAll('h1, h2, h3, h4, h5, h6'));
 	}
 
-	function jumpTo(index, text) {
-		var hs = liveHeadings();
-		var h = hs[index];
-		if (!h || (text && (h.textContent || '').trim() !== text)) {
-			for (var i = 0; i < hs.length; i++) {
-				if ((hs[i].textContent || '').trim() === text) { h = hs[i]; break; }
+	function entryText(type, node) {
+		if (type === 'todo') {
+			var box = node.closest('li') || node.parentElement || node;
+			return (box.textContent || '').trim();
+		}
+		return (node.textContent || '').trim();
+	}
+
+	function scrollTargetFor(type, node) {
+		if (type === 'todo') return node.closest('li') || node.parentElement || node;
+		return node;
+	}
+
+	function jumpTo(type, index, text) {
+		var ns = liveNodes(type);
+		var n = ns[index];
+		if (!n || (text && entryText(type, n) !== text)) {
+			for (var i = 0; i < ns.length; i++) {
+				if (entryText(type, ns[i]) === text) { n = ns[i]; break; }
 			}
 		}
-		if (h && h.isConnected) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		var target = n ? scrollTargetFor(type, n) : null;
+		if (target && target.isConnected) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
 	// Width of the note viewer's right-edge scrollbar zone. Overlay scrollbars
@@ -111,10 +132,27 @@
 		if (old) old.remove();
 
 		var root = document.getElementById('rendered-md') || document.body;
-		var headings = Array.prototype.slice.call(
-			root.querySelectorAll('h1, h2, h3, h4, h5, h6')
-		);
-		if (headings.length < settings.minHeadings) return;
+
+		var withTodos = settings.showTodos !== false;
+		var selector = withTodos
+			? 'h1, h2, h3, h4, h5, h6, input[type="checkbox"]'
+			: 'h1, h2, h3, h4, h5, h6';
+		var nodes = Array.prototype.slice.call(root.querySelectorAll(selector));
+
+		var entries = [];
+		var headingCount = 0;
+		var hIdx = 0;
+		var tIdx = 0;
+		for (var ni = 0; ni < nodes.length; ni++) {
+			var node = nodes[ni];
+			if (/^H[1-6]$/.test(node.tagName)) {
+				headingCount++;
+				entries.push({ type: 'heading', level: Number(node.tagName.charAt(1)), text: entryText('heading', node), index: hIdx++ });
+			} else {
+				entries.push({ type: 'todo', done: !!node.checked, text: entryText('todo', node), index: tIdx++ });
+			}
+		}
+		if (headingCount < settings.minHeadings) return;
 
 		var nav = document.createElement('nav');
 		nav.id = 'jp-minimap';
@@ -141,23 +179,29 @@
 		var list = document.createElement('div');
 		list.className = 'jp-mm-list';
 
-		var items = headings.map(function (h, index) {
-			var level = Number(h.tagName.charAt(1));
-
+		var items = entries.map(function (entry) {
 			// NOT an <a>: Joplin's viewer shows a "Ctrl+click to open" tooltip
 			// on anchors and treats them as external links.
 			var item = document.createElement('div');
-			item.className = 'jp-mm-item jp-mm-l' + level;
-
-			var bar = document.createElement('span');
-			bar.className = 'jp-mm-bar';
-
-			var label = document.createElement('span');
-			label.className = 'jp-mm-label';
-			label.textContent = (h.textContent || '').trim();
-
-			item.appendChild(bar);
-			item.appendChild(label);
+			if (entry.type === 'todo') {
+				item.className = 'jp-mm-item jp-mm-todo ' + (entry.done ? 'jp-mm-todo-done' : 'jp-mm-todo-open');
+				var dot = document.createElement('span');
+				dot.className = 'jp-mm-dot';
+				item.appendChild(dot);
+				var tlabel = document.createElement('span');
+				tlabel.className = 'jp-mm-label';
+				tlabel.textContent = (entry.done ? '\u2611 ' : '\u2610 ') + entry.text;
+				item.appendChild(tlabel);
+			} else {
+				item.className = 'jp-mm-item jp-mm-l' + entry.level;
+				var bar = document.createElement('span');
+				bar.className = 'jp-mm-bar';
+				item.appendChild(bar);
+				var label = document.createElement('span');
+				label.className = 'jp-mm-label';
+				label.textContent = entry.text;
+				item.appendChild(label);
+			}
 
 			// MOUSEDOWN, not click: the press gives the webview focus, Joplin may
 			// re-render the note, and our panel gets rebuilt BETWEEN mousedown and
@@ -165,11 +209,8 @@
 			// never fires. mousedown runs before any of that can happen.
 			item.addEventListener('mousedown', function (e) {
 				if (e.button !== 0) return;
-				var text = (label.textContent || '').trim();
-				// If the press triggers a note re-render, the rebuild will
-				// re-apply this jump against the fresh DOM.
-				pendingJump = { index: index, text: text, until: Date.now() + 1200 };
-				jumpTo(index, text);
+				pendingJump = { type: entry.type, index: entry.index, text: entry.text, until: Date.now() + 1200 };
+				jumpTo(entry.type, entry.index, entry.text);
 			});
 
 			list.appendChild(item);
@@ -179,13 +220,19 @@
 		nav.appendChild(list);
 		document.body.appendChild(nav);
 
+		var headingItemIdx = [];
+		for (var ei = 0; ei < entries.length; ei++) {
+			if (entries[ei].type === 'heading') headingItemIdx.push(ei);
+		}
 		function updateActive() {
-			var activeIndex = 0;
-			for (var i = 0; i < headings.length; i++) {
-				if (headings[i].getBoundingClientRect().top <= 90) activeIndex = i;
+			var liveH = liveNodes('heading');
+			var activeItem = -1;
+			for (var i = 0; i < headingItemIdx.length; i++) {
+				var hn = liveH[i];
+				if (hn && hn.getBoundingClientRect().top <= 90) activeItem = headingItemIdx[i];
 			}
 			for (var j = 0; j < items.length; j++) {
-				items[j].classList.toggle('jp-mm-active', j === activeIndex);
+				items[j].classList.toggle('jp-mm-active', j === activeItem);
 			}
 		}
 
@@ -195,7 +242,7 @@
 		// A rebuild arriving right after a click means the note was re-rendered
 		// and the original scrollIntoView hit a detached node - redo the jump.
 		if (pendingJump && Date.now() < pendingJump.until) {
-			jumpTo(pendingJump.index, pendingJump.text);
+			jumpTo(pendingJump.type, pendingJump.index, pendingJump.text);
 			pendingJump = null;
 		}
 

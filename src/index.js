@@ -6,6 +6,7 @@
 
 // SettingItemType numeric values: Int=1, String=2, Bool=3 (no 'api' import in plain JS)
 const TYPE_INT = 1;
+const TYPE_BOOL = 3;
 
 // Settings-screen strings, resolved from the app locale at registration time
 // (matching Joplin's own restart-on-language-switch behavior).
@@ -17,6 +18,8 @@ const SETTINGS_I18N = {
 		panelWidthDesc: 'Maximum width of the hover-expanded table of contents. Default: 240.',
 		rightOffset: 'Distance from right edge (px)',
 		rightOffsetDesc: 'Gap between the minimap and the right edge of the viewer. Default: 6.',
+		showTodos: 'Show to-do markers',
+		showTodosDesc: 'Mark checkbox items on the minimap: a filled dot for open to-dos, a hollow dot for completed ones. Default: on.',
 	},
 	zh_CN: {
 		minHeadings: '最少标题数',
@@ -25,6 +28,8 @@ const SETTINGS_I18N = {
 		panelWidthDesc: '悬停展开的目录面板最大宽度。默认 240。',
 		rightOffset: '距右边缘距离（px）',
 		rightOffsetDesc: '小地图与阅读器右边缘的间距。默认 6。',
+		showTodos: '显示待办标记',
+		showTodosDesc: '在小地图上标出复选框项：未完成待办为实心圆点，已完成为空心圆点。默认开启。',
 	},
 	zh_TW: {
 		minHeadings: '最少標題數',
@@ -33,6 +38,8 @@ const SETTINGS_I18N = {
 		panelWidthDesc: '懸停展開的目錄面板最大寬度。預設 240。',
 		rightOffset: '距右邊緣距離（px）',
 		rightOffsetDesc: '小地圖與檢視器右邊緣的間距。預設 6。',
+		showTodos: '顯示待辦標記',
+		showTodosDesc: '在小地圖上標出核取方塊項：未完成待辦為實心圓點，已完成為空心圓點。預設開啟。',
 	},
 	ru: {
 		minHeadings: 'Минимум заголовков',
@@ -41,6 +48,8 @@ const SETTINGS_I18N = {
 		panelWidthDesc: 'Максимальная ширина оглавления при наведении. По умолчанию: 240.',
 		rightOffset: 'Отступ от правого края (px)',
 		rightOffsetDesc: 'Зазор между миникартой и правым краем просмотра. По умолчанию: 6.',
+		showTodos: 'Показывать метки задач',
+		showTodosDesc: 'Отмечать пункты-флажки на миникарте: закрашенная точка — открытая задача, полая — выполненная. По умолчанию: вкл.',
 	},
 	ja_JP: {
 		minHeadings: '最小見出し数',
@@ -49,6 +58,8 @@ const SETTINGS_I18N = {
 		panelWidthDesc: 'ホバーで展開する目次の最大幅。既定値：240。',
 		rightOffset: '右端からの距離（px）',
 		rightOffsetDesc: 'ミニマップとビューアー右端の間隔。既定値：6。',
+		showTodos: 'ToDoマーカーを表示',
+		showTodosDesc: 'ミニマップにチェックボックス項目を表示：未完了は塗りつぶし、完了は白抜きの点。既定値：オン。',
 	},
 };
 
@@ -100,6 +111,14 @@ joplin.plugins.register({
 				label: t.rightOffset,
 				description: t.rightOffsetDesc,
 			},
+			'minimapShowTodos': {
+				value: true,
+				type: TYPE_BOOL,
+				section: 'minimap',
+				public: true,
+				label: t.showTodos,
+				description: t.showTodosDesc,
+			},
 			});
 		} catch (error) {
 			console.error('Joplin Minimap: registerSettings failed:', error);
@@ -117,6 +136,7 @@ joplin.plugins.register({
 					minHeadings: await joplin.settings.value('minimapMinHeadings'),
 					panelWidth: await joplin.settings.value('minimapPanelWidth'),
 					rightOffset: await joplin.settings.value('minimapRightOffset'),
+					showTodos: await joplin.settings.value('minimapShowTodos'),
 				};
 			}
 			return null;
