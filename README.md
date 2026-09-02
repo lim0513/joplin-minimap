@@ -11,6 +11,7 @@ A hover-to-expand table of contents minimap for the [Joplin](https://joplinapp.o
 - **Click to Jump** — Click any entry to smooth-scroll to that heading
 - **Reading Position** — The section currently in view is highlighted automatically
 - **Live Rebuild** — Rebuilds itself when you switch notes or edit content (listens to `joplin-noteDidUpdate` with a MutationObserver fallback)
+- **RTL Aware** — Headings in right-to-left scripts (Persian, Arabic, Hebrew) are right-aligned in the expanded panel and indent inward from the right; direction is detected per heading, so mixed notes stay readable
 - **Theme Aware** — Follows light and dark themes automatically (colors derive from `currentColor`)
 - **Unobtrusive** — Hidden for notes with fewer than 2 headings, hidden when printing/exporting, never steals focus or keyboard input
 
@@ -50,7 +51,8 @@ Configurable in **Tools → Options → Joplin Minimap**:
 
 - **Minimum headings** — hide the minimap when the note has fewer headings than this (default 2)
 - **Expanded panel width (px)** — maximum width of the hover-expanded table of contents (default 240)
-- **Distance from right edge (px)** — gap between the minimap and the viewer's right edge (default 6)
+- **Minimap side** — which edge of the viewer the minimap docks to, right or left (default right)
+- **Edge distance (px)** — gap between the minimap and the viewer edge it sits on (default 6)
 
 Changed settings apply on the next render (switch notes or edit the note).
 

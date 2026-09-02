@@ -8,7 +8,7 @@
 
 	// Defaults; overridden from Joplin's plugin settings (Tools > Options > Minimap)
 	// when webviewApi is available in this webview.
-	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, showTodos: true };
+	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, side: 'right', showTodos: true };
 
 	function loadSettings() {
 		if (typeof webviewApi === 'undefined' || !webviewApi.postMessage) {
@@ -47,7 +47,7 @@
 	// then renders UNSTYLED as flow content below the note (looks like a
 	// duplicated outline under the document). Keeping the CSS inline and
 	// re-injecting guarantees the nav and its styling live and die together.
-	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n}\n\n/* indent by heading level when expanded */\n#jp-minimap:hover .jp-mm-l2 { padding-left: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-left: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-left: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-left: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-left: 52px; }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: block;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: rgba(205, 97, 85, 0.85);\n\tmargin-right: 5px;\n\tflex: none;\n}\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
+	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n\t/* Collapsed geometry is direction-independent: the tick bars always\n\t * hug the docked edge, whichever side that is, even in an RTL note. Per-item direction applies\n\t * to the expanded panel only (see the dir=rtl rule below). */\n\tdirection: ltr;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n\tdirection: ltr;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- docked on the left edge ---- */\n\n/* Mirror the collapsed alignment so the tick bars hug the left border.\n * direction is pinned to ltr above, so flex-start is unambiguously the left\n * side whatever language the note is in. Placed BEFORE the :hover rules on\n * purpose: they carry the same specificity, so source order decides. */\n#jp-minimap.jp-mm-left .jp-mm-list { align-items: flex-start; }\n#jp-minimap.jp-mm-left .jp-mm-item { justify-content: flex-start; }\n\n/* The to-do dot mirrors too: docked right it hangs left of the tick bar,\n * docked left it must hang RIGHT of it - otherwise a dotted row pushes its\n * bar 9px inward (4px dot + 5px gap) and the flush bar column goes ragged.\n * order= reorders the flex row without touching the DOM, so the expanded\n * panel can put the dot back in front of the label. */\n#jp-minimap.jp-mm-left .jp-mm-dot {\n\torder: 1;\n\tmargin-inline-start: 5px;\n\tmargin-inline-end: 0;\n}\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\ttext-align: start;\n}\n\n/* RTL headings (Persian/Arabic/Hebrew) read right-to-left in the expanded\n * panel: justify-content, padding-inline-start and text-align:start all flip\n * with the row direction, so the label hugs the right edge and nested levels\n * indent inward from the right. build() sets dir per row (first strong char). */\n#jp-minimap:hover .jp-mm-item[dir=\"rtl\"] { direction: rtl; }\n\n/* indent by heading level when expanded (logical: left in LTR, right in RTL) */\n#jp-minimap:hover .jp-mm-l2 { padding-inline-start: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-inline-start: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-inline-start: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-inline-start: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-inline-start: 52px; }\n\n/* Expanded, the dot reads as a marker BEFORE the title on either edge. */\n#jp-minimap.jp-mm-left:hover .jp-mm-dot {\n\torder: 0;\n\tmargin-inline-start: 0;\n\tmargin-inline-end: 5px;\n}\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: block;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: rgba(205, 97, 85, 0.85);\n\tmargin-inline-end: 5px;\n\tflex: none;\n}\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
 
 	function ensureStyle() {
 		if (document.getElementById('jp-minimap-style')) return;
@@ -55,6 +55,31 @@
 		styleEl.id = 'jp-minimap-style';
 		styleEl.textContent = MINIMAP_CSS;
 		(document.head || document.documentElement).appendChild(styleEl);
+	}
+
+	// Bidi: the panel hangs off the right edge, so RTL headings (Persian,
+	// Arabic, Hebrew) must read right-to-left inside it - otherwise their text
+	// is forced left and the level indent grows from the wrong side. Resolve
+	// each heading the way dir="auto" does: the FIRST strong character wins.
+	// Ranges are deliberately coarse but disjoint (RTL blocks 0590-08FF plus the
+	// Arabic/Hebrew presentation forms; everything else strong counts as LTR).
+	var RTL_STRONG = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+	var LTR_STRONG = /[A-Za-z\u00C0-\u058F\u0900-\u1FFF\u2C00-\uD7FF\uF900-\uFAFF]/;
+
+	function textDirection(text, heading) {
+		var s = String(text || '');
+		for (var i = 0; i < s.length; i++) {
+			var c = s.charAt(i);
+			if (RTL_STRONG.test(c)) return 'rtl';
+			if (LTR_STRONG.test(c)) return 'ltr';
+		}
+		// No strong character at all (digits, punctuation, emoji): inherit the
+		// direction the rendered heading itself got from the note.
+		try {
+			return window.getComputedStyle(heading).direction === 'rtl' ? 'rtl' : 'ltr';
+		} catch (e) {
+			return 'ltr';
+		}
 	}
 
 	// Clicking the minimap gives the webview focus, which can make Joplin
@@ -138,7 +163,18 @@
 		// Applied in BOTH collapsed and expanded states: shifting only on hover
 		// would move the panel out from under the cursor and cause a
 		// hover/unhover flicker loop.
-		nav.style.right = (settings.rightOffset + scrollbarGap(root)) + 'px';
+		// Docking side. ALWAYS clear the opposite offset: a fixed box with both
+		// left and right set stretches between them instead of hugging one edge.
+		// The scrollbar gap is a right-edge concern only - the viewer's scrollbar
+		// never sits on the left, so no gap is added there.
+		if (settings.side === 'left') {
+			nav.className = 'jp-mm-left';
+			nav.style.left = settings.rightOffset + 'px';
+			nav.style.right = 'auto';
+		} else {
+			nav.style.right = (settings.rightOffset + scrollbarGap(root)) + 'px';
+			nav.style.left = 'auto';
+		}
 		nav.style.setProperty('--jp-mm-width', settings.panelWidth + 'px');
 		// The viewer DOM can be editable in some contexts; make sure the
 		// minimap never shows a caret or accepts keyboard input.
@@ -172,6 +208,12 @@
 			var label = document.createElement('span');
 			label.className = 'jp-mm-label';
 			label.textContent = (h.textContent || '').trim();
+
+			// Explicit on BOTH directions, not just RTL: dir also turns on bidi
+			// isolation, which keeps an LTR title readable inside an RTL note
+			// (and vice versa). CSS pins the collapsed rows back to ltr so the
+			// tick bars stay flush with the docked edge either way.
+			item.setAttribute('dir', textDirection(label.textContent, h));
 
 			// Muted red reminder dot before the bar (and before the label when
 			// expanded - same element, flex order does the work).
