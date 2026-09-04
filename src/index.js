@@ -23,6 +23,8 @@ const SETTINGS_I18N = {
 		sideDesc: 'Which edge of the viewer the minimap sits on. Default: right.',
 		sideRight: 'Right',
 		sideLeft: 'Left',
+		maxLevel: 'Default depth',
+		maxLevelDesc: 'Deepest heading level shown when a note opens. The +/- buttons at the top of the expanded panel change it on the fly. Default: 6 (every level).',
 		showTodos: 'Show to-do markers',
 		showTodosDesc: 'Show a small red dot before a section\'s tick bar when it contains open to-dos. Default: on.',
 	},
@@ -37,6 +39,8 @@ const SETTINGS_I18N = {
 		sideDesc: '小地图停靠在阅读器的哪一侧边缘。默认靠右。',
 		sideRight: '右侧',
 		sideLeft: '左侧',
+		maxLevel: '默认层级深度',
+		maxLevelDesc: '打开笔记时显示到第几级标题。展开面板顶部的 +/- 按钮可随时调整。默认 6（全部层级）。',
 		showTodos: '显示待办标记',
 		showTodosDesc: '当章节内含未完成待办时，在该章节横线前显示一个小红点提醒。默认开启。',
 	},
@@ -51,6 +55,8 @@ const SETTINGS_I18N = {
 		sideDesc: '小地圖停靠在檢視器的哪一側邊緣。預設靠右。',
 		sideRight: '右側',
 		sideLeft: '左側',
+		maxLevel: '預設層級深度',
+		maxLevelDesc: '開啟筆記時顯示到第幾級標題。展開面板頂部的 +/- 按鈕可隨時調整。預設 6（全部層級）。',
 		showTodos: '顯示待辦標記',
 		showTodosDesc: '當章節內含未完成待辦時，在該章節橫線前顯示一個小紅點提醒。預設開啟。',
 	},
@@ -65,6 +71,8 @@ const SETTINGS_I18N = {
 		sideDesc: 'У какого края области просмотра располагается миникарта. По умолчанию: справа.',
 		sideRight: 'Справа',
 		sideLeft: 'Слева',
+		maxLevel: 'Глубина по умолчанию',
+		maxLevelDesc: 'До какого уровня заголовков показывать при открытии заметки. Кнопки +/- вверху развёрнутой панели меняют её на лету. По умолчанию: 6 (все уровни).',
 		showTodos: 'Показывать метки задач',
 		showTodosDesc: 'Показывать маленькую красную точку перед линией раздела, если в нём есть открытые задачи. По умолчанию: вкл.',
 	},
@@ -79,6 +87,8 @@ const SETTINGS_I18N = {
 		sideDesc: 'ミニマップをビューアーのどちら側の端に表示するか。既定値：右。',
 		sideRight: '右',
 		sideLeft: '左',
+		maxLevel: '既定の階層の深さ',
+		maxLevelDesc: 'ノートを開いたときに表示する見出しの深さ。展開パネル上部の +/- ボタンでいつでも変更できます。既定値：6（すべての階層）。',
 		showTodos: 'ToDoマーカーを表示',
 		showTodosDesc: '未完了のToDoを含むセクションの線の前に小さな赤い点を表示します。既定値：オン。',
 	},
@@ -147,6 +157,19 @@ joplin.plugins.register({
 				label: t.side,
 				description: t.sideDesc,
 			},
+			// Only the STARTING depth. The stepper in the panel overrides it for
+			// the rest of the session without writing back here - a setting that
+			// rewrote itself on every click would fight the user's own default.
+			'minimapMaxLevel': {
+				value: 6,
+				minimum: 1,
+				maximum: 6,
+				type: TYPE_INT,
+				section: 'minimap',
+				public: true,
+				label: t.maxLevel,
+				description: t.maxLevelDesc,
+			},
 			'minimapShowTodos': {
 				value: true,
 				type: TYPE_BOOL,
@@ -173,6 +196,7 @@ joplin.plugins.register({
 					panelWidth: await joplin.settings.value('minimapPanelWidth'),
 					rightOffset: await joplin.settings.value('minimapRightOffset'),
 					side: await joplin.settings.value('minimapSide'),
+					maxLevel: await joplin.settings.value('minimapMaxLevel'),
 					showTodos: await joplin.settings.value('minimapShowTodos'),
 				};
 			}

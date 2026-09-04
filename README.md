@@ -8,6 +8,8 @@ A hover-to-expand table of contents minimap for the [Joplin](https://joplinapp.o
 
 - **Tick Bar Minimap** — Each heading is shown as a small horizontal bar on the right edge of the note viewer; bar length reflects the heading level (H1 longest)
 - **Hover to Expand** — Move the mouse over the bars and they expand into a full table of contents overlay, indented by level, with long titles ellipsized
+- **Depth Stepper** — `+` / `-` buttons at the top of the expanded panel raise or lower how deep the outline goes, so a long nested note collapses to its top-level structure in one click
+- **Heading Tiers** — Top-level headings render larger and heavier than nested ones, so the shape of the document is readable at a glance
 - **Click to Jump** — Click any entry to smooth-scroll to that heading
 - **Reading Position** — The section currently in view is highlighted automatically
 - **Live Rebuild** — Rebuilds itself when you switch notes or edit content (listens to `joplin-noteDidUpdate` with a MutationObserver fallback)
@@ -52,6 +54,7 @@ Configurable in **Tools → Options → Joplin Minimap**:
 - **Minimum headings** — hide the minimap when the note has fewer headings than this (default 2)
 - **Expanded panel width (px)** — maximum width of the hover-expanded table of contents (default 240)
 - **Minimap side** — which edge of the viewer the minimap docks to, right or left (default right)
+- **Default depth** — deepest heading level shown when a note opens; the `+`/`-` buttons change it on the fly (default 6, every level)
 - **Edge distance (px)** — gap between the minimap and the viewer edge it sits on (default 6)
 
 Changed settings apply on the next render (switch notes or edit the note).

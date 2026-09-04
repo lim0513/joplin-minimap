@@ -8,7 +8,7 @@
 
 	// Defaults; overridden from Joplin's plugin settings (Tools > Options > Minimap)
 	// when webviewApi is available in this webview.
-	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, side: 'right', showTodos: true };
+	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, side: 'right', maxLevel: 6, showTodos: true };
 
 	function loadSettings() {
 		if (typeof webviewApi === 'undefined' || !webviewApi.postMessage) {
@@ -47,7 +47,7 @@
 	// then renders UNSTYLED as flow content below the note (looks like a
 	// duplicated outline under the document). Keeping the CSS inline and
 	// re-injecting guarantees the nav and its styling live and die together.
-	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n\t/* Collapsed geometry is direction-independent: the tick bars always\n\t * hug the docked edge, whichever side that is, even in an RTL note. Per-item direction applies\n\t * to the expanded panel only (see the dir=rtl rule below). */\n\tdirection: ltr;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n\tdirection: ltr;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- docked on the left edge ---- */\n\n/* Mirror the collapsed alignment so the tick bars hug the left border.\n * direction is pinned to ltr above, so flex-start is unambiguously the left\n * side whatever language the note is in. Placed BEFORE the :hover rules on\n * purpose: they carry the same specificity, so source order decides. */\n#jp-minimap.jp-mm-left .jp-mm-list { align-items: flex-start; }\n#jp-minimap.jp-mm-left .jp-mm-item { justify-content: flex-start; }\n\n/* The to-do dot mirrors too: docked right it hangs left of the tick bar,\n * docked left it must hang RIGHT of it - otherwise a dotted row pushes its\n * bar 9px inward (4px dot + 5px gap) and the flush bar column goes ragged.\n * order= reorders the flex row without touching the DOM, so the expanded\n * panel can put the dot back in front of the label. */\n#jp-minimap.jp-mm-left .jp-mm-dot {\n\torder: 1;\n\tmargin-inline-start: 5px;\n\tmargin-inline-end: 0;\n}\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\ttext-align: start;\n}\n\n/* RTL headings (Persian/Arabic/Hebrew) read right-to-left in the expanded\n * panel: justify-content, padding-inline-start and text-align:start all flip\n * with the row direction, so the label hugs the right edge and nested levels\n * indent inward from the right. build() sets dir per row (first strong char). */\n#jp-minimap:hover .jp-mm-item[dir=\"rtl\"] { direction: rtl; }\n\n/* indent by heading level when expanded (logical: left in LTR, right in RTL) */\n#jp-minimap:hover .jp-mm-l2 { padding-inline-start: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-inline-start: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-inline-start: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-inline-start: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-inline-start: 52px; }\n\n/* Expanded, the dot reads as a marker BEFORE the title on either edge. */\n#jp-minimap.jp-mm-left:hover .jp-mm-dot {\n\torder: 0;\n\tmargin-inline-start: 0;\n\tmargin-inline-end: 5px;\n}\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: block;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: rgba(205, 97, 85, 0.85);\n\tmargin-inline-end: 5px;\n\tflex: none;\n}\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
+	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: 12.5px;\n\tline-height: 1.35;\n\tcolor: inherit;\n\t/* Collapsed geometry is direction-independent: the tick bars always\n\t * hug the docked edge, whichever side that is, even in an RTL note. Per-item direction applies\n\t * to the expanded panel only (see the dir=rtl rule below). */\n\tdirection: ltr;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: 0.5;\n\tcursor: pointer;\n\toutline: none;\n\tdirection: ltr;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- depth stepper (issue #2) ---- */\n\n/* Rows deeper than the current depth are HIDDEN, not removed: keeping the\n * nav element alive is what lets the panel stay open across a depth change,\n * since the whole expansion rides on :hover over #jp-minimap. */\n#jp-minimap[data-depth=\"1\"] .jp-mm-l2,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"5\"] .jp-mm-l6 { display: none; }\n\n/* The stepper is part of the expanded panel only - collapsed, the minimap\n * stays the same narrow strip of tick marks it has always been. */\n.jp-mm-head { display: none; }\n\n\n/* ---- docked on the left edge ---- */\n\n/* Mirror the collapsed alignment so the tick bars hug the left border.\n * direction is pinned to ltr above, so flex-start is unambiguously the left\n * side whatever language the note is in. Placed BEFORE the :hover rules on\n * purpose: they carry the same specificity, so source order decides. */\n#jp-minimap.jp-mm-left .jp-mm-list { align-items: flex-start; }\n#jp-minimap.jp-mm-left .jp-mm-item { justify-content: flex-start; }\n\n/* The to-do dot mirrors too: docked right it hangs left of the tick bar,\n * docked left it must hang RIGHT of it - otherwise a dotted row pushes its\n * bar 9px inward (4px dot + 5px gap) and the flush bar column goes ragged.\n * order= reorders the flex row without touching the DOM, so the expanded\n * panel can put the dot back in front of the label. */\n#jp-minimap.jp-mm-left .jp-mm-dot {\n\torder: 1;\n\tmargin-inline-start: 5px;\n\tmargin-inline-end: 0;\n}\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap:hover .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: rgba(127, 127, 127, 0.16);\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap:hover .jp-mm-bar { display: none; }\n\n#jp-minimap:hover .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap:hover .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\ttext-align: start;\n}\n\n/* RTL headings (Persian/Arabic/Hebrew) read right-to-left in the expanded\n * panel: justify-content, padding-inline-start and text-align:start all flip\n * with the row direction, so the label hugs the right edge and nested levels\n * indent inward from the right. build() sets dir per row (first strong char). */\n#jp-minimap:hover .jp-mm-item[dir=\"rtl\"] { direction: rtl; }\n\n/* indent by heading level when expanded (logical: left in LTR, right in RTL) */\n#jp-minimap:hover .jp-mm-l2 { padding-inline-start: 16px; }\n#jp-minimap:hover .jp-mm-l3 { padding-inline-start: 28px; }\n#jp-minimap:hover .jp-mm-l4 { padding-inline-start: 40px; }\n#jp-minimap:hover .jp-mm-l5 { padding-inline-start: 52px; }\n#jp-minimap:hover .jp-mm-l6 { padding-inline-start: 52px; }\n\n#jp-minimap:hover .jp-mm-head {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: center;\n\tgap: 7px;\n\tpadding: 0 4px 5px;\n\tmargin-bottom: 4px;\n\tborder-bottom: 1px solid rgba(127, 127, 127, 0.3);\n\tfont-size: 11px;\n\topacity: 0.8;\n\t/* The control reads the same either way round, and the panel is pinned\n\t * to ltr anyway - keep it out of the per-row bidi logic entirely. */\n\tdirection: ltr;\n}\n\n.jp-mm-step {\n\tmin-width: 15px;\n\ttext-align: center;\n\tborder-radius: 4px;\n\tfont-weight: 700;\n\tcursor: pointer;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n#jp-minimap:hover .jp-mm-step:hover { background: rgba(127, 127, 127, 0.45); }\n\n/* Already at the shallowest / deepest level this note has. */\n.jp-mm-step-off { opacity: 0.3; cursor: default; }\n#jp-minimap:hover .jp-mm-step-off:hover { background: rgba(127, 127, 127, 0.22); }\n\n.jp-mm-depth { font-variant-numeric: tabular-nums; }\n\n/* ---- heading tiers (issue #2): indentation alone is a weak cue when\n * scanning a long outline. Size and weight only - NEVER a colour. The\n * panel has to stay legible on every Joplin theme, so the palette is\n * limited to currentColor and neutral rgba (see CLAUDE.md). ---- */\n#jp-minimap:hover .jp-mm-r0 .jp-mm-label { font-size: 13.5px; font-weight: 600; }\n#jp-minimap:hover .jp-mm-r1 .jp-mm-label { font-weight: 500; }\n#jp-minimap:hover .jp-mm-r2 .jp-mm-label { font-size: 11.5px; opacity: 0.8; }\n\n\n/* Expanded, the dot reads as a marker BEFORE the title on either edge. */\n#jp-minimap.jp-mm-left:hover .jp-mm-dot {\n\torder: 0;\n\tmargin-inline-start: 0;\n\tmargin-inline-end: 5px;\n}\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap:hover .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: none;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: rgba(205, 97, 85, 0.85);\n\tmargin-inline-end: 5px;\n\tflex: none;\n}\n\n.jp-mm-dot.jp-mm-on { display: block; }\n\n/* don't show over printed/exported output */\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
 
 	function ensureStyle() {
 		if (document.getElementById('jp-minimap-style')) return;
@@ -88,6 +88,22 @@
 	// index/text-based against the LIVE DOM, and if a rebuild happens right
 	// after a click (the re-render case), the jump is re-applied afterwards.
 	var pendingJump = null; // { index, text, until }
+
+	// Deepest heading level the panel shows. null = follow the setting; once the
+	// reader touches the stepper their choice sticks for the rest of the webview
+	// session. It CANNOT live on the DOM: build() rebuilds the whole nav on every
+	// note render, so anything held there is gone on the next keystroke.
+	var userDepth = null;
+
+	// Snap a wanted depth onto a level this note actually has (notes routinely
+	// start at H2 or skip a level).
+	function clampDepth(levels, want) {
+		var best = levels[0];
+		for (var i = 0; i < levels.length; i++) {
+			if (levels[i] <= want) best = levels[i];
+		}
+		return best;
+	}
 
 	function liveHeadings() {
 		var root = document.getElementById('rendered-md') || document.body;
@@ -141,6 +157,16 @@
 		);
 		if (headings.length < settings.minHeadings) return;
 
+		// Distinct levels present, shallow to deep. The stepper walks THIS list
+		// rather than 1-6, so every click visibly changes something.
+		var levels = [];
+		for (var li = 0; li < headings.length; li++) {
+			var lvl = Number(headings[li].tagName.charAt(1));
+			if (levels.indexOf(lvl) < 0) levels.push(lvl);
+		}
+		levels.sort(function (a, b) { return a - b; });
+		var maxLevel = clampDepth(levels, userDepth === null ? settings.maxLevel : userDepth);
+
 		// Which sections contain at least one OPEN checkbox: walk headings and
 		// checkboxes in one document-ordered pass, attributing each unchecked
 		// box to the nearest preceding heading. One dot per section, however
@@ -157,6 +183,7 @@
 				else if (!wn.checked && lastHeading >= 0) sectionHasTodo[lastHeading] = true;
 			}
 		}
+
 
 		var nav = document.createElement('nav');
 		nav.id = 'jp-minimap';
@@ -183,6 +210,7 @@
 		// and the browser then draws a :focus-visible ring on the scroll
 		// container. Natural mouse focus never shows a ring.
 		nav.setAttribute('contenteditable', 'false');
+		nav.setAttribute('data-depth', maxLevel);
 		// Own the wheel entirely while the cursor is over the minimap:
 		// scroll the ToC list ourselves and never let the event chain
 		// through to the note underneath (scroll chaining feels erratic).
@@ -194,13 +222,91 @@
 		var list = document.createElement('div');
 		list.className = 'jp-mm-list';
 
+		// Depth stepper. It lives INSIDE the nav on purpose: clicking it keeps the
+		// cursor over #jp-minimap, so the hover-expanded panel never collapses
+		// mid-interaction and no click-to-pin state has to be invented. Pointless
+		// when the note only has one heading level, so it is omitted entirely.
+		var head = null;
+		var minusBtn = null;
+		var plusBtn = null;
+		var depthText = null;
+		if (levels.length > 1) {
+			head = document.createElement('div');
+			head.className = 'jp-mm-head';
+			minusBtn = stepButton('-', -1);
+			depthText = document.createElement('span');
+			depthText.className = 'jp-mm-depth';
+			plusBtn = stepButton('+', 1);
+			head.appendChild(minusBtn);
+			head.appendChild(depthText);
+			head.appendChild(plusBtn);
+			list.appendChild(head);
+			renderHead();
+		}
+
+		function stepButton(sign, delta) {
+			var b = document.createElement('span');
+			b.className = 'jp-mm-step';
+			b.textContent = sign;
+			// mousedown for the same reason the rows use it (see below), and the
+			// event must not reach anything underneath: adjusting the depth should
+			// never scroll the note.
+			b.addEventListener('mousedown', function (e) {
+				if (e.button !== 0) return;
+				e.preventDefault();
+				e.stopPropagation();
+				setDepth(levels[levels.indexOf(maxLevel) + delta]);
+			});
+			return b;
+		}
+
+		function renderHead() {
+			if (!head) return;
+			var lo = levels[0];
+			depthText.textContent = lo === maxLevel ? ('H' + lo) : ('H' + lo + '-H' + maxLevel);
+			minusBtn.classList.toggle('jp-mm-step-off', maxLevel === lo);
+			plusBtn.classList.toggle('jp-mm-step-off', maxLevel === levels[levels.length - 1]);
+		}
+
+		function setDepth(next) {
+			if (next === undefined) return;
+			// The panel is vertically centred (top: 50% + translateY(-50%)), so
+			// hiding rows slides its top edge DOWN and the stepper crawls out from
+			// under the cursor - after a couple of clicks the pointer leaves the
+			// panel entirely and it collapses. Measure the header, apply the
+			// change, then pin the header back where it was. The inline top lasts
+			// only until the next build(), which re-centres from scratch.
+			var beforeY = head.getBoundingClientRect().top;
+			maxLevel = next;
+			userDepth = next;
+			nav.setAttribute('data-depth', maxLevel);
+			renderHead();
+			applyTodoDots();
+			var afterY = head.getBoundingClientRect().top;
+			if (afterY !== beforeY) {
+				var box = nav.getBoundingClientRect();
+				var limit = window.innerHeight - box.height - 4;
+				var top = box.top + (beforeY - afterY);
+				nav.style.top = Math.max(4, Math.min(top, limit > 4 ? limit : 4)) + 'px';
+				nav.style.transform = 'none';
+			}
+			updateActive();
+		}
+
+		// A row is built for EVERY heading; the stepper hides the deep ones with
+		// CSS rather than rebuilding, so the nav element - and with it the :hover
+		// state holding the panel open - survives a depth change untouched.
 		var items = headings.map(function (h, index) {
 			var level = Number(h.tagName.charAt(1));
+			// Size/weight tier keys off the RANK among the levels this note uses,
+			// not the absolute level: a note that starts at H2 still gets a proper
+			// top tier instead of looking uniformly like sub-headings.
+			var rank = Math.min(levels.indexOf(level), 2);
 
 			// NOT an <a>: Joplin's viewer shows a "Ctrl+click to open" tooltip
 			// on anchors and treats them as external links.
 			var item = document.createElement('div');
-			item.className = 'jp-mm-item jp-mm-l' + level;
+			item.className = 'jp-mm-item jp-mm-l' + level + ' jp-mm-r' + rank;
 
 			var bar = document.createElement('span');
 			bar.className = 'jp-mm-bar';
@@ -216,12 +322,12 @@
 			item.setAttribute('dir', textDirection(label.textContent, h));
 
 			// Muted red reminder dot before the bar (and before the label when
-			// expanded - same element, flex order does the work).
-			if (sectionHasTodo[index]) {
-				var dot = document.createElement('span');
-				dot.className = 'jp-mm-dot';
-				item.appendChild(dot);
-			}
+			// expanded - same element, flex order does the work). Built for every
+			// row and shown with a class, because WHICH row carries a dot depends
+			// on the current depth and the stepper changes that without rebuilding.
+			var dot = document.createElement('span');
+			dot.className = 'jp-mm-dot';
+			item.appendChild(dot);
 			item.appendChild(bar);
 			item.appendChild(label);
 
@@ -245,13 +351,38 @@
 		nav.appendChild(list);
 		document.body.appendChild(nav);
 
+		// Open to-dos in a section the stepper has collapsed away roll up to the
+		// nearest visible ancestor. Without this, lowering the depth silently
+		// hides the only signal that a branch still holds unfinished work - which
+		// is worse than having no dots at all, because the panel looks clean.
+		function applyTodoDots() {
+			var owner = {};
+			if (settings.showTodos !== false) {
+				var visible = -1;
+				for (var i = 0; i < headings.length; i++) {
+					if (Number(headings[i].tagName.charAt(1)) <= maxLevel) visible = i;
+					if (sectionHasTodo[i] && visible >= 0) owner[visible] = true;
+				}
+			}
+			for (var j = 0; j < items.length; j++) {
+				items[j].firstChild.classList.toggle('jp-mm-on', owner[j] === true);
+			}
+		}
+		applyTodoDots();
+
 		function updateActive() {
 			var activeIndex = 0;
 			for (var i = 0; i < headings.length; i++) {
 				if (headings[i].getBoundingClientRect().top <= 90) activeIndex = i;
 			}
+			// A heading hidden by the stepper highlights its nearest VISIBLE
+			// ancestor instead, so the panel always shows where you are.
+			var activeRow = 0;
+			for (var k = 0; k <= activeIndex; k++) {
+				if (Number(headings[k].tagName.charAt(1)) <= maxLevel) activeRow = k;
+			}
 			for (var j = 0; j < items.length; j++) {
-				items[j].classList.toggle('jp-mm-active', j === activeIndex);
+				items[j].classList.toggle('jp-mm-active', j === activeRow);
 			}
 		}
 
