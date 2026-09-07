@@ -6,7 +6,11 @@ Things that aren't obvious from the code or the Joplin docs. If you're about to 
 
 ## Release pipeline (CRITICAL)
 
-`publish/plugin.jpl` is a **gzipped tar archive** containing its own copy of `manifest.json`. Joplin uses the **outer** manifest (or the npm registry metadata) to decide whether an update is available, but reads the version actually installed from the **inner** manifest inside the `.jpl`.
+`publish/plugin.jpl` is a **plain, UNCOMPRESSED tar archive** containing its own copy of `manifest.json`.
+
+**Never gzip the .jpl.** Joplin's own generator builds it with `tar.create` and no gzip option, and the mobile and web apps read it with a library that does not sniff for compression. A gzipped `.jpl` installs fine on desktop (whose reader happens to auto-detect gzip) and then fails everywhere else with `Invalid tar header. Maybe the tar is corrupted or it needs to be gunzipped?`. `pack-jpl.js` gzipped it from the very first release; nobody noticed through v1.2.0 because the plugin was desktop-only, and it surfaced the first time a build was installed on the web app.
+
+Joplin uses the **outer** manifest (or the npm registry metadata) to decide whether an update is available, but reads the version actually installed from the **inner** manifest inside the `.jpl`.
 
 If these disagree, Joplin gets stuck in an update loop: it sees a newer outer version, downloads and installs the `.jpl`, the inner manifest still reports the old version, on next restart Joplin prompts again — forever. (This actually happened to the sibling project joplin-explorer between v1.2.0 and v1.2.3.)
 
@@ -16,7 +20,7 @@ If these disagree, Joplin gets stuck in an update loop: it sees a newer outer ve
 2. Run `npm run dist` — this MUST regenerate `publish/plugin.jpl` so the inner manifest matches.
 3. Verify the inner manifest:
    ```
-   tar -xzf publish/plugin.jpl -C /tmp/check && cat /tmp/check/manifest.json
+   tar -xf publish/plugin.jpl -C /tmp/check && cat /tmp/check/manifest.json
    ```
    Inner version MUST equal `src/manifest.json`'s version.
 4. Only then `npm publish` and upload `publish/plugin.jpl` to the GitHub release.
@@ -43,7 +47,7 @@ src/
   minimap-view.js          runs INSIDE the rendered viewer - builds the minimap from the DOM
   minimap.css              collapsed tick bars / hover-expanded panel styling
 build.js                   copies src/ -> dist/ AND src/ -> publish/
-scripts/pack-jpl.js        gzip-tars publish/ -> publish/plugin.jpl
+scripts/pack-jpl.js        tars (UNCOMPRESSED) publish/ -> publish/plugin.jpl
 ```
 
 - `build.js` outputs BOTH `dist/` (for Joplin's **Development plugins** setting, pointed at the project root) and `publish/` (what ships to npm; `files: ["publish"]`).
@@ -77,7 +81,12 @@ scripts/pack-jpl.js        gzip-tars publish/ -> publish/plugin.jpl
     - **Step over levels the note does not have.** `levels` is the distinct levels present, and the stepper walks that array, not 1-6. A note using H2/H3/H5 steps 5 -> 3 -> 2; stepping 1-6 blindly would give clicks that visibly do nothing.
     - **Recompute the to-do dots.** `applyTodoDots()` runs on every depth change, rolling open to-dos up to the nearest VISIBLE ancestor. Computing it once at build time (the first attempt) made the dots vanish as soon as the depth dropped - worse than having no dots, because the panel then looks clean while work is hidden underneath.
 15. **Heading tiers key off RANK, not absolute level.** `jp-mm-r0/r1/r2` come from the index of the row's level within `levels`, so a note that starts at H2 still gets a proper top tier instead of rendering uniformly as sub-headings. Size and weight only - issue #2 also asked for an accent colour and that CANNOT be granted: the panel is theme-agnostic by contract (currentColor + neutral rgba), and any fixed colour breaks on some Joplin theme.
-16. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
+16. **The expanded panel is a CLASS, not `:hover` (mobile).** Every expanded-state rule keys off `#jp-minimap.jp-mm-open`, toggled from JS. It cannot be `:hover`: on touch, `:hover` latches after a tap and the panel sticks open with no way to dismiss it. Mouse devices get `mouseenter`/`mouseleave`, which is behaviourally identical to the old `:hover` (mouseenter fires for the subtree, so children do not re-trigger it).
+    `isTouch` is `(hover: hover)` NOT matching - a device capability, never a screen width or a user-agent sniff, so a touchscreen laptop with a mouse keeps desktop behaviour. It also gates: the `scrollbarGap()` inset (a phone has no scrollbar zone to dodge, and the 14px unmeasurable-fallback would be pure waste), and closing the panel after a jump (there is no cursor to move away, so the panel would cover the heading the reader just asked for).
+    Touch input relies on the browser's own tap-vs-scroll decision rather than duplicating it: a real tap synthesises `mousedown`, a scroll gesture does not, so the existing row handler works untouched. The only custom part is OPENING - collapsed rows are 18x2px, unhittable, so the whole strip is one target. That handler `preventDefault()`s on touchend, which is load-bearing: without it the synthetic mousedown falls through and the tap that opens the panel also jumps to whatever row landed under the finger.
+17. **Markdown-it content-script JS assets DO load on mobile/web** - verified in the web app (app.joplincloud.com, which runs the mobile code path) with v1.3.0. This was the open question that decided whether mobile support was possible at all, so do not re-litigate it. The API docs only ever disclaim mobile for `CodeMirrorPlugin`'s `codeMirrorResources`; `MarkdownItPlugin` carries no such caveat, and that matches what the app actually does.
+    iOS is a separate matter and NOT a code problem: "To adhere to AppStore guidelines, the iOS app only allows installing recommended plugins." There is no Install-from-file on iOS and no documented way to debug there, so iOS users cannot get this plugin until it is accepted into Joplin's recommended list. Android has full remote WebView debugging via Chrome; the web app is the fastest dev loop and needs no device.
+18. **Windows + mounted-folder tooling:** writing these files through certain file-sync layers has truncated them mid-write before. After bulk edits, sanity-check with `node --check src/*.js build.js scripts/pack-jpl.js`.
 
 ## Settings plumbing
 

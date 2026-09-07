@@ -7,6 +7,7 @@ A hover-to-expand table of contents minimap for the [Joplin](https://joplinapp.o
 ## Features
 
 - **Tick Bar Minimap** — Each heading is shown as a small horizontal bar on the right edge of the note viewer; bar length reflects the heading level (H1 longest)
+- **Desktop and Mobile** — Hover on desktop, tap on touch devices: the collapsed strip is a single tap target, rows and buttons grow to finger size when open, and tapping outside or picking a heading closes it again
 - **Hover to Expand** — Move the mouse over the bars and they expand into a full table of contents overlay, indented by level, with long titles ellipsized
 - **Depth Stepper** — `+` / `-` buttons at the top of the expanded panel raise or lower how deep the outline goes, so a long nested note collapses to its top-level structure in one click
 - **Heading Tiers** — Top-level headings render larger and heavier than nested ones, so the shape of the document is readable at a glance
