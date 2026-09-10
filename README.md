@@ -57,8 +57,30 @@ Configurable in **Tools → Options → Joplin Minimap**:
 - **Minimap side** — which edge of the viewer the minimap docks to, right or left (default right)
 - **Default depth** — deepest heading level shown when a note opens; the `+`/`-` buttons change it on the fly (default 6, every level)
 - **Edge distance (px)** — gap between the minimap and the viewer edge it sits on (default 6)
+- **Text size (%)** — scales the text in the expanded panel; raise it on high-DPI screens (default 100, under *Advanced*)
+- **High contrast panel** — brighter text and a more solid panel background, using no fixed colours so it still follows your theme (default off, under *Advanced*)
 
 Changed settings apply on the next render (switch notes or edit the note).
+
+### Styling it yourself
+
+Every colour and size the panel uses reads from a CSS variable, so you can restyle it from `userstyle.css` in your Joplin profile directory (it applies to the rendered note viewer, which is where the minimap lives). Set them on `:root` — no `!important` needed:
+
+```css
+:root {
+  --jp-mm-font:  15px;                      /* base text size            */
+  --jp-mm-color: #e8e8e8;                   /* outline text              */
+  --jp-mm-bg:    rgba(30, 30, 30, 0.92);    /* expanded panel background */
+  --jp-mm-dim:   0.85;                      /* opacity of inactive rows  */
+  --jp-mm-dot:   #cd6155;                   /* open-to-do dot            */
+  --jp-mm-width: 320px;                     /* expanded panel max width  */
+}
+```
+
+Joplin creates and opens the file for you: **Tools → Options → Appearance → Show Advanced Settings → Custom stylesheet for rendered Markdown**. It is `userstyle.css` in your profile directory (`%USERPROFILE%\.config\joplin-desktop\` on Windows, `~/.config/joplin-desktop/` elsewhere) if you would rather edit it directly. Restart Joplin afterwards.
+
+Try **High contrast panel** first — it fixes most legibility complaints without picking any colours, so it keeps working when you switch themes.
+
 
 ## Development
 
