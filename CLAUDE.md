@@ -33,6 +33,15 @@ If these disagree, Joplin gets stuck in an update loop: it sees a newer outer ve
 - npm Granular Access Tokens default to **7-day expiration**.
 - For security-key users, the token MUST have **"Bypass 2FA when publishing"** checked, otherwise `npm publish` fails with `EOTP`.
 - `npm unpublish` is only allowed within 24h. After that, bump and move on.
+- **npm STAGES a publish before it lands, and the CLI lies about it.** The first `npm publish` uploads the tarball into a staging queue for malware scanning; the version is NOT live yet. Publishing again while the scan runs fails with `E409 Cannot publish over previously staged version`. Nothing is broken and nothing needs clearing - wait a few minutes and publish again. Do NOT bump the version to escape it and do NOT go hunting for a way to discard the stage: `npm stage list` reports "No staged versions" the whole time, because a package still being scanned is invisible to it.
+- **Never filter the output of `npm publish`.** It prints `+ package@version` BEFORE the upload is accepted, so grepping for that line reports success on a failed publish. Read the whole output, and confirm against the registry itself:
+
+  ```
+  curl -s https://registry.npmjs.org/<pkg> | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log(j['dist-tags'].latest)})"
+  ```
+
+  `npm view <pkg> version` is cached and can report the OLD version for a while after a successful publish, so disagreement between the two means "check again", not "it failed".
+- `npm stage` (list / approve / reject) needs a newer CLI than 11.11. Run it with `npx npm@latest stage ...` rather than upgrading npm globally.
 
 ---
 
