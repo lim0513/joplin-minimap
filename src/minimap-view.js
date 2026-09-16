@@ -116,7 +116,7 @@
 		return Array.prototype.slice.call(root.querySelectorAll('h1, h2, h3, h4, h5, h6'));
 	}
 
-	function jumpTo(index, text) {
+	function findHeading(index, text) {
 		var hs = liveHeadings();
 		var h = hs[index];
 		if (!h || (text && (h.textContent || '').trim() !== text)) {
@@ -124,7 +124,74 @@
 				if ((hs[i].textContent || '').trim() === text) { h = hs[i]; break; }
 			}
 		}
-		if (h && h.isConnected) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		return h;
+	}
+
+	// A smooth scrollIntoView is fire-and-forget: the browser animates towards
+	// an offset worked out when it STARTS, and plenty can cut it short or make
+	// it land wrong - the reader nudging the wheel, Joplin re-rendering the note
+	// underneath, split view writing scrollTop of its own, or images above the
+	// target finishing layout and shifting it. The jump then stops somewhere in
+	// between, which is the "clicked H1 but only went up to 4.5" report.
+	// Some environments ignore behavior:'smooth' altogether (headless Chromium
+	// does, measured) and the jump never moves at all.
+	//
+	// So the animation is started for the feel, then the heading is watched
+	// until it stops moving and an INSTANT scroll closes whatever gap is left.
+	// The instant call uses the same alignment, so when the smooth scroll did
+	// land correctly it is a no-op.
+	var jumpWatch = null;
+	var jumpRelease = null;
+
+	function stopJumpWatch() {
+		if (jumpWatch) { clearInterval(jumpWatch); jumpWatch = null; }
+		if (jumpRelease) { jumpRelease(); jumpRelease = null; }
+	}
+
+	function watchJump(index, text) {
+		stopJumpWatch();
+
+		// The reader always wins: if they scroll themselves we are no longer
+		// correcting a broken jump, we are fighting them.
+		var takenOver = false;
+		function onUserScroll(e) {
+			// Wheeling the ToC list itself is not the reader taking over the note -
+			// the panel has its own wheel handler, and clicking a row then scrolling
+			// the list to pick another is a normal sequence.
+			var t = e && e.target;
+			if (t && t.closest && t.closest('#jp-minimap')) return;
+			takenOver = true;
+		}
+		document.addEventListener('wheel', onUserScroll, { passive: true, capture: true });
+		document.addEventListener('touchstart', onUserScroll, { passive: true, capture: true });
+		jumpRelease = function () {
+			document.removeEventListener('wheel', onUserScroll, { capture: true });
+			document.removeEventListener('touchstart', onUserScroll, { capture: true });
+		};
+
+		var ticks = 0;
+		var prevTop = null;
+		jumpWatch = setInterval(function () {
+			ticks++;
+			if (takenOver) { stopJumpWatch(); return; }
+			var h = findHeading(index, text);
+			// A rebuild can briefly detach it; keep waiting, within reason.
+			if (!h || !h.isConnected) { if (ticks > 20) stopJumpWatch(); return; }
+			var top = Math.round(h.getBoundingClientRect().top);
+			var settled = prevTop !== null && top === prevTop;
+			prevTop = top;
+			if (settled || ticks > 20) {
+				stopJumpWatch();
+				h.scrollIntoView({ block: 'start' });
+			}
+		}, 70);
+	}
+
+	function jumpTo(index, text) {
+		var h = findHeading(index, text);
+		if (!h || !h.isConnected) return;
+		h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		watchJump(index, text);
 	}
 
 	// Width of the note viewer's right-edge scrollbar zone. Overlay scrollbars
