@@ -1,6 +1,7 @@
 /* Joplin Minimap - runs inside the rendered note viewer.
  * Collects h1-h6 from the rendered DOM, draws collapsed tick bars on the
- * right edge, expands into a full ToC on hover, and jumps on click.
+ * right edge, expands into a full ToC on hover (or stays open as a pinned
+ * sidebar), and jumps on click.
  * Rebuilds itself whenever the note content changes (note switch, edit).
  */
 (function () {
@@ -8,14 +9,24 @@
 
 	// Defaults; overridden from Joplin's plugin settings (Tools > Options > Minimap)
 	// when webviewApi is available in this webview.
-	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, side: 'right', maxLevel: 6, fontScale: 100, highContrast: false, showTodos: true };
+	var settings = { minHeadings: 2, panelWidth: 240, rightOffset: 6, side: 'right', maxLevel: 6, fontScale: 100, highContrast: false, showTodos: true, pinned: false, pinTip: 'Pin the outline open', unpinTip: 'Unpin (open on hover)' };
+
+	// Pin state set from the panel's own button. The write-back to the plugin
+	// setting is async, so a settings fetch already in flight can still return
+	// the OLD value and flip the panel back. Hold the local choice until a fetch
+	// agrees with it; after that the setting is authoritative again, so a change
+	// made on the options screen still takes effect.
+	var pinOverride = null;
 
 	function loadSettings() {
 		if (typeof webviewApi === 'undefined' || !webviewApi.postMessage) {
 			return Promise.resolve();
 		}
 		return webviewApi.postMessage('joplin-minimap', 'getSettings').then(function (s) {
-			if (s && typeof s.minHeadings === 'number') settings = s;
+			if (s && typeof s.minHeadings === 'number') {
+				settings = s;
+				if (pinOverride !== null && (s.pinned === true) === pinOverride) pinOverride = null;
+			}
 		}).catch(function () { /* keep defaults (e.g. print/export context) */ });
 	}
 
@@ -47,7 +58,7 @@
 	// then renders UNSTYLED as flow content below the note (looks like a
 	// duplicated outline under the document). Keeping the CSS inline and
 	// re-injecting guarantees the nav and its styling live and die together.
-	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: var(--jp-mm-font, 12.5px);\n\tline-height: 1.35;\n\tcolor: var(--jp-mm-color, inherit);\n\t/* Collapsed geometry is direction-independent: the tick bars always\n\t * hug the docked edge, whichever side that is, even in an RTL note. Per-item direction applies\n\t * to the expanded panel only (see the dir=rtl rule below). */\n\tdirection: ltr;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: var(--jp-mm-dim, 0.5);\n\tcursor: pointer;\n\toutline: none;\n\tdirection: ltr;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- depth stepper (issue #2) ---- */\n\n/* Rows deeper than the current depth are HIDDEN, not removed: keeping the\n * nav element alive is what lets the panel stay open across a depth change,\n * since the whole expansion rides on :hover over #jp-minimap. */\n#jp-minimap[data-depth=\"1\"] .jp-mm-l2,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"5\"] .jp-mm-l6 { display: none; }\n\n/* The stepper is part of the expanded panel only - collapsed, the minimap\n * stays the same narrow strip of tick marks it has always been. */\n.jp-mm-head { display: none; }\n\n\n/* ---- docked on the left edge ---- */\n\n/* Mirror the collapsed alignment so the tick bars hug the left border.\n * direction is pinned to ltr above, so flex-start is unambiguously the left\n * side whatever language the note is in. Placed BEFORE the :hover rules on\n * purpose: they carry the same specificity, so source order decides. */\n#jp-minimap.jp-mm-left .jp-mm-list { align-items: flex-start; }\n#jp-minimap.jp-mm-left .jp-mm-item { justify-content: flex-start; }\n\n/* The to-do dot mirrors too: docked right it hangs left of the tick bar,\n * docked left it must hang RIGHT of it - otherwise a dotted row pushes its\n * bar 9px inward (4px dot + 5px gap) and the flush bar column goes ragged.\n * order= reorders the flex row without touching the DOM, so the expanded\n * panel can put the dot back in front of the label. */\n#jp-minimap.jp-mm-left .jp-mm-dot {\n\torder: 1;\n\tmargin-inline-start: 5px;\n\tmargin-inline-end: 0;\n}\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap.jp-mm-open .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: var(--jp-mm-bg, rgba(127, 127, 127, 0.16));\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap.jp-mm-open .jp-mm-bar { display: none; }\n\n#jp-minimap.jp-mm-open .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap.jp-mm-open .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\ttext-align: start;\n}\n\n/* RTL headings (Persian/Arabic/Hebrew) read right-to-left in the expanded\n * panel: justify-content, padding-inline-start and text-align:start all flip\n * with the row direction, so the label hugs the right edge and nested levels\n * indent inward from the right. build() sets dir per row (first strong char). */\n#jp-minimap.jp-mm-open .jp-mm-item[dir=\"rtl\"] { direction: rtl; }\n\n/* indent by heading level when expanded (logical: left in LTR, right in RTL) */\n#jp-minimap.jp-mm-open .jp-mm-l2 { padding-inline-start: 16px; }\n#jp-minimap.jp-mm-open .jp-mm-l3 { padding-inline-start: 28px; }\n#jp-minimap.jp-mm-open .jp-mm-l4 { padding-inline-start: 40px; }\n#jp-minimap.jp-mm-open .jp-mm-l5 { padding-inline-start: 52px; }\n#jp-minimap.jp-mm-open .jp-mm-l6 { padding-inline-start: 52px; }\n\n#jp-minimap.jp-mm-open .jp-mm-head {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: center;\n\tgap: 7px;\n\tpadding: 0 4px 5px;\n\tmargin-bottom: 4px;\n\tborder-bottom: 1px solid rgba(127, 127, 127, 0.3);\n\tfont-size: 0.88em;\n\topacity: 0.8;\n\t/* The control reads the same either way round, and the panel is pinned\n\t * to ltr anyway - keep it out of the per-row bidi logic entirely. */\n\tdirection: ltr;\n}\n\n.jp-mm-step {\n\tmin-width: 15px;\n\ttext-align: center;\n\tborder-radius: 4px;\n\tfont-weight: 700;\n\tcursor: pointer;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n#jp-minimap.jp-mm-open .jp-mm-step:hover { background: rgba(127, 127, 127, 0.45); }\n\n/* Already at the shallowest / deepest level this note has. */\n.jp-mm-step-off { opacity: 0.3; cursor: default; }\n#jp-minimap.jp-mm-open .jp-mm-step-off:hover { background: rgba(127, 127, 127, 0.22); }\n\n.jp-mm-depth { font-variant-numeric: tabular-nums; }\n\n/* ---- heading tiers (issue #2): indentation alone is a weak cue when\n * scanning a long outline. Size and weight only - NEVER a colour. The\n * panel has to stay legible on every Joplin theme, so the palette is\n * limited to currentColor and neutral rgba (see CLAUDE.md). ---- */\n#jp-minimap.jp-mm-open .jp-mm-r0 .jp-mm-label { font-size: 1.08em; font-weight: 600; }\n#jp-minimap.jp-mm-open .jp-mm-r1 .jp-mm-label { font-weight: 500; }\n#jp-minimap.jp-mm-open .jp-mm-r2 .jp-mm-label { font-size: 0.92em; opacity: 0.8; }\n\n\n/* Expanded, the dot reads as a marker BEFORE the title on either edge. */\n#jp-minimap.jp-mm-open.jp-mm-left .jp-mm-dot {\n\torder: 0;\n\tmargin-inline-start: 0;\n\tmargin-inline-end: 5px;\n}\n\n/* ---- high contrast (issue #5) ---- */\n\n/* Still routed through the same variables, so a userstyle.css override wins\n * over the mode rather than fighting it. */\n#jp-minimap.jp-mm-hc .jp-mm-item { opacity: var(--jp-mm-dim, 0.82); }\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-r2 .jp-mm-label { opacity: 0.95; }\n\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-list {\n\tbackground: var(--jp-mm-bg, rgba(127, 127, 127, 0.38));\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);\n}\n\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-head { opacity: 1; }\n#jp-minimap.jp-mm-hc .jp-mm-step { background: rgba(127, 127, 127, 0.4); }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap.jp-mm-open .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: none;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: var(--jp-mm-dot, rgba(205, 97, 85, 0.85));\n\tmargin-inline-end: 5px;\n\tflex: none;\n}\n\n.jp-mm-dot.jp-mm-on { display: block; }\n\n/* don't show over printed/exported output */\n/* ---- touch devices ---- */\n\n/* (hover: none) is the device capability, not a screen width: a tablet with\n * a mouse keeps the desktop sizes, a touchscreen laptop gets these. */\n@media (hover: none) {\n\t/* Collapsed, the whole strip is the tap target - give it room. */\n\t.jp-mm-list { padding: 12px 14px; }\n\t.jp-mm-bar { height: 3px; }\n\n\t/* Expanded, each row has to be hittable on its own. */\n\t#jp-minimap.jp-mm-open .jp-mm-item { padding-top: 12px; padding-bottom: 12px; }\n\t#jp-minimap.jp-mm-open .jp-mm-label { font-size: 1.12em; }\n\t#jp-minimap.jp-mm-open .jp-mm-r0 .jp-mm-label { font-size: 1.2em; }\n\t#jp-minimap.jp-mm-open .jp-mm-r2 .jp-mm-label { font-size: 1.04em; }\n\n\t#jp-minimap.jp-mm-open .jp-mm-head { font-size: 1.04em; gap: 10px; padding-bottom: 8px; }\n\t.jp-mm-step { min-width: 32px; padding: 5px 0; }\n}\n@media print {\n\t#jp-minimap { display: none; }\n}\n";
+	var MINIMAP_CSS = "/* Joplin Minimap \u2014 collapsed tick bars, hover-expanded ToC panel.\n * Colors use currentColor / rgba so it follows both light and dark themes.\n */\n\n#jp-minimap {\n\tuser-select: none;\n\t-webkit-user-select: none;\n\tcaret-color: transparent;\n\tcursor: default;\n\tposition: fixed;\n\ttop: 50%;\n\tright: 6px;\n\ttransform: translateY(-50%);\n\tz-index: 9999;\n\tfont-size: var(--jp-mm-font, 12.5px);\n\tline-height: 1.35;\n\tcolor: var(--jp-mm-color, inherit);\n\t/* Collapsed geometry is direction-independent: the tick bars always\n\t * hug the docked edge, whichever side that is, even in an RTL note. Per-item direction applies\n\t * to the expanded panel only (see the dir=rtl rule below). */\n\tdirection: ltr;\n}\n\n.jp-mm-list {\n\tdisplay: flex;\n\tflex-direction: column;\n\talign-items: flex-end;\n\tpadding: 8px 6px;\n\tmax-height: 84vh;\n\toverflow: hidden;\n\tborder-radius: 10px;\n\ttransition: background 0.15s ease, box-shadow 0.15s ease;\n}\n\n.jp-mm-item {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: flex-end;\n\tpadding: 3px 4px;\n\tborder-radius: 6px;\n\ttext-decoration: none;\n\tcolor: inherit;\n\topacity: var(--jp-mm-dim, 0.5);\n\tcursor: pointer;\n\toutline: none;\n\tdirection: ltr;\n}\n\n/* ---- collapsed state: tick bars, width by heading level ---- */\n\n.jp-mm-bar {\n\tdisplay: block;\n\theight: 2px;\n\tborder-radius: 1px;\n\tbackground: currentColor;\n}\n\n.jp-mm-l1 .jp-mm-bar { width: 18px; }\n.jp-mm-l2 .jp-mm-bar { width: 13px; }\n.jp-mm-l3 .jp-mm-bar { width: 9px; }\n.jp-mm-l4 .jp-mm-bar { width: 7px; }\n.jp-mm-l5 .jp-mm-bar { width: 5px; }\n.jp-mm-l6 .jp-mm-bar { width: 5px; }\n\n.jp-mm-label { display: none; }\n\n/* ---- depth stepper (issue #2) ---- */\n\n/* Rows deeper than the current depth are HIDDEN, not removed: keeping the\n * nav element alive is what lets the panel stay open across a depth change,\n * since the whole expansion rides on :hover over #jp-minimap. */\n#jp-minimap[data-depth=\"1\"] .jp-mm-l2,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"1\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l3,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"2\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l4,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"3\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l5,\n#jp-minimap[data-depth=\"4\"] .jp-mm-l6,\n#jp-minimap[data-depth=\"5\"] .jp-mm-l6 { display: none; }\n\n/* The stepper is part of the expanded panel only - collapsed, the minimap\n * stays the same narrow strip of tick marks it has always been. */\n.jp-mm-head { display: none; }\n\n\n/* ---- docked on the left edge ---- */\n\n/* Mirror the collapsed alignment so the tick bars hug the left border.\n * direction is pinned to ltr above, so flex-start is unambiguously the left\n * side whatever language the note is in. Placed BEFORE the :hover rules on\n * purpose: they carry the same specificity, so source order decides. */\n#jp-minimap.jp-mm-left .jp-mm-list { align-items: flex-start; }\n#jp-minimap.jp-mm-left .jp-mm-item { justify-content: flex-start; }\n\n/* The to-do dot mirrors too: docked right it hangs left of the tick bar,\n * docked left it must hang RIGHT of it - otherwise a dotted row pushes its\n * bar 9px inward (4px dot + 5px gap) and the flush bar column goes ragged.\n * order= reorders the flex row without touching the DOM, so the expanded\n * panel can put the dot back in front of the label. */\n#jp-minimap.jp-mm-left .jp-mm-dot {\n\torder: 1;\n\tmargin-inline-start: 5px;\n\tmargin-inline-end: 0;\n}\n\n/* ---- expanded state (hover) ---- */\n\n#jp-minimap.jp-mm-open .jp-mm-list {\n\talign-items: stretch;\n\toverflow-y: auto;\n\toverscroll-behavior: contain;\n\tbackground: var(--jp-mm-bg, rgba(127, 127, 127, 0.16));\n\tbackdrop-filter: blur(10px);\n\t-webkit-backdrop-filter: blur(10px);\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);\n}\n\n#jp-minimap.jp-mm-open .jp-mm-bar { display: none; }\n\n#jp-minimap.jp-mm-open .jp-mm-item { justify-content: flex-start; }\n\n#jp-minimap.jp-mm-open .jp-mm-label {\n\tdisplay: block;\n\tmax-width: var(--jp-mm-width, 240px);\n\twhite-space: nowrap;\n\toverflow: hidden;\n\ttext-overflow: ellipsis;\n\ttext-align: start;\n}\n\n/* RTL headings (Persian/Arabic/Hebrew) read right-to-left in the expanded\n * panel: justify-content, padding-inline-start and text-align:start all flip\n * with the row direction, so the label hugs the right edge and nested levels\n * indent inward from the right. build() sets dir per row (first strong char). */\n#jp-minimap.jp-mm-open .jp-mm-item[dir=\"rtl\"] { direction: rtl; }\n\n/* indent by heading level when expanded (logical: left in LTR, right in RTL) */\n#jp-minimap.jp-mm-open .jp-mm-l2 { padding-inline-start: 16px; }\n#jp-minimap.jp-mm-open .jp-mm-l3 { padding-inline-start: 28px; }\n#jp-minimap.jp-mm-open .jp-mm-l4 { padding-inline-start: 40px; }\n#jp-minimap.jp-mm-open .jp-mm-l5 { padding-inline-start: 52px; }\n#jp-minimap.jp-mm-open .jp-mm-l6 { padding-inline-start: 52px; }\n\n#jp-minimap.jp-mm-open .jp-mm-head {\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: center;\n\tgap: 7px;\n\tpadding: 0 4px 5px;\n\tmargin-bottom: 4px;\n\tborder-bottom: 1px solid rgba(127, 127, 127, 0.3);\n\tfont-size: 0.88em;\n\topacity: 0.8;\n\t/* The control reads the same either way round, and the panel is pinned\n\t * to ltr anyway - keep it out of the per-row bidi logic entirely. */\n\tdirection: ltr;\n}\n\n.jp-mm-step {\n\tmin-width: 15px;\n\ttext-align: center;\n\tborder-radius: 4px;\n\tfont-weight: 700;\n\tcursor: pointer;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n#jp-minimap.jp-mm-open .jp-mm-step:hover { background: rgba(127, 127, 127, 0.45); }\n\n/* Already at the shallowest / deepest level this note has. */\n.jp-mm-step-off { opacity: 0.3; cursor: default; }\n#jp-minimap.jp-mm-open .jp-mm-step-off:hover { background: rgba(127, 127, 127, 0.22); }\n\n.jp-mm-depth { font-variant-numeric: tabular-nums; }\n\n/* ---- heading tiers (issue #2): indentation alone is a weak cue when\n * scanning a long outline. Size and weight only - NEVER a colour. The\n * panel has to stay legible on every Joplin theme, so the palette is\n * limited to currentColor and neutral rgba (see CLAUDE.md). ---- */\n#jp-minimap.jp-mm-open .jp-mm-r0 .jp-mm-label { font-size: 1.08em; font-weight: 600; }\n#jp-minimap.jp-mm-open .jp-mm-r1 .jp-mm-label { font-weight: 500; }\n#jp-minimap.jp-mm-open .jp-mm-r2 .jp-mm-label { font-size: 0.92em; opacity: 0.8; }\n\n\n/* Expanded, the dot reads as a marker BEFORE the title on either edge. */\n#jp-minimap.jp-mm-open.jp-mm-left .jp-mm-dot {\n\torder: 0;\n\tmargin-inline-start: 0;\n\tmargin-inline-end: 5px;\n}\n\n/* ---- high contrast (issue #5) ---- */\n\n/* Still routed through the same variables, so a userstyle.css override wins\n * over the mode rather than fighting it. */\n#jp-minimap.jp-mm-hc .jp-mm-item { opacity: var(--jp-mm-dim, 0.82); }\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-r2 .jp-mm-label { opacity: 0.95; }\n\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-list {\n\tbackground: var(--jp-mm-bg, rgba(127, 127, 127, 0.38));\n\tbox-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);\n}\n\n#jp-minimap.jp-mm-hc.jp-mm-open .jp-mm-head { opacity: 1; }\n#jp-minimap.jp-mm-hc .jp-mm-step { background: rgba(127, 127, 127, 0.4); }\n\n/* ---- pinned (issue #6): a permanent sidebar instead of a hover panel.\n * Top-anchored rather than centred, like an outline pane: centring would\n * move the whole panel every time the depth stepper changes its height. ---- */\n#jp-minimap.jp-mm-pinned {\n\ttop: 12px;\n\ttransform: none;\n}\n\n#jp-minimap.jp-mm-pinned .jp-mm-list {\n\twidth: var(--jp-mm-width, 240px);\n\tbox-sizing: border-box;\n\tmax-height: calc(100vh - 24px);\n\toverflow-x: hidden;\n\tbox-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);\n}\n\n/* A fixed width instead of hugging the longest title: the note text is\n * moved aside by exactly this much, so the width must not change with the\n * depth stepper. Long titles ellipsize inside it. */\n#jp-minimap.jp-mm-pinned .jp-mm-label {\n\tmax-width: none;\n\tmin-width: 0;\n\tflex: 1 1 auto;\n}\n\n/* The header always exists (it carries the pin), with or without a stepper.\n * Side padding keeps the centred stepper clear of the pin in a narrow panel. */\n#jp-minimap.jp-mm-open .jp-mm-head {\n\tposition: relative;\n\tmin-height: 16px;\n\tpadding-left: 22px;\n\tpadding-right: 22px;\n}\n\n.jp-mm-pin {\n\tposition: absolute;\n\tright: 0;\n\ttop: 0;\n\tdisplay: flex;\n\talign-items: center;\n\tjustify-content: center;\n\twidth: 18px;\n\theight: 16px;\n\tborder-radius: 4px;\n\tcursor: pointer;\n\topacity: 0.55;\n}\n\n#jp-minimap.jp-mm-open .jp-mm-pin:hover { opacity: 1; background: rgba(127, 127, 127, 0.3); }\n#jp-minimap.jp-mm-pinned .jp-mm-pin { opacity: 1; background: rgba(127, 127, 127, 0.25); }\n.jp-mm-pin svg { display: block; }\n\n/* ---- shared states ---- */\n\n.jp-mm-item:hover {\n\topacity: 1;\n\tbackground: rgba(127, 127, 127, 0.22);\n}\n\n.jp-mm-active { opacity: 1; }\n\n#jp-minimap.jp-mm-open .jp-mm-active {\n\tbackground: rgba(127, 127, 127, 0.18);\n}\n\n/* No scrollbar in the expanded panel: the wheel handler owns scrolling,\n * and a visible scrollbar at the panel edge invites overlay-scrollbar\n * style hover/click interference. */\n.jp-mm-list::-webkit-scrollbar { display: none; }\n.jp-mm-list { scrollbar-width: none; }\n\n/* ---- open-to-do section dot: one muted red dot before the tick bar of\n * any section that contains at least one unchecked checkbox ---- */\n.jp-mm-dot {\n\tdisplay: none;\n\twidth: 4px;\n\theight: 4px;\n\tborder-radius: 50%;\n\tbackground: var(--jp-mm-dot, rgba(205, 97, 85, 0.85));\n\tmargin-inline-end: 5px;\n\tflex: none;\n}\n\n.jp-mm-dot.jp-mm-on { display: block; }\n\n/* don't show over printed/exported output */\n/* ---- touch devices ---- */\n\n/* (hover: none) is the device capability, not a screen width: a tablet with\n * a mouse keeps the desktop sizes, a touchscreen laptop gets these. */\n@media (hover: none) {\n\t/* Collapsed, the whole strip is the tap target - give it room. */\n\t.jp-mm-list { padding: 12px 14px; }\n\t.jp-mm-bar { height: 3px; }\n\n\t/* Expanded, each row has to be hittable on its own. */\n\t#jp-minimap.jp-mm-open .jp-mm-item { padding-top: 12px; padding-bottom: 12px; }\n\t#jp-minimap.jp-mm-open .jp-mm-label { font-size: 1.12em; }\n\t#jp-minimap.jp-mm-open .jp-mm-r0 .jp-mm-label { font-size: 1.2em; }\n\t#jp-minimap.jp-mm-open .jp-mm-r2 .jp-mm-label { font-size: 1.04em; }\n\n\t#jp-minimap.jp-mm-open .jp-mm-head { font-size: 1.04em; gap: 10px; padding-bottom: 8px; }\n\t.jp-mm-step { min-width: 32px; padding: 5px 0; }\n}\n@media print {\n\t#jp-minimap { display: none; }\n\t:root { --jp-mm-reserve: 0px !important; }\n}\n";
 
 	function ensureStyle() {
 		if (document.getElementById('jp-minimap-style')) return;
@@ -212,6 +223,30 @@
 		return gap > 0 ? gap : 14;
 	}
 
+	// Pads the note container on the docked side until its content clears the
+	// pinned panel. Returns the undo, or null when nothing was reserved. Both
+	// rects are viewport-relative and the panel is position:fixed.
+	function reserveSpace(el, nav, side) {
+		var prop = side === 'left' ? 'padding-left' : 'padding-right';
+		var prevInline = el.style.getPropertyValue(prop);
+		var base = parseFloat(window.getComputedStyle(el).getPropertyValue(prop)) || 0;
+		var er = el.getBoundingClientRect();
+		var nr = nav.getBoundingClientRect();
+		var need = side === 'left' ? (nr.right + 12 - er.left - base) : (er.right - nr.left + 12 - base);
+		if (need <= 0) return null;
+		// Keep a readable column: in a narrow split view the pinned panel is
+		// better left overlapping than squeezing the note to a sliver.
+		var other = parseFloat(window.getComputedStyle(el).getPropertyValue(side === 'left' ? 'padding-right' : 'padding-left')) || 0;
+		if (er.width - other - base - need < 320) return null;
+		document.documentElement.style.setProperty('--jp-mm-reserve', Math.ceil(need) + 'px');
+		el.style.setProperty(prop, 'calc(' + base + 'px + var(--jp-mm-reserve, 0px))');
+		return function () {
+			if (prevInline) el.style.setProperty(prop, prevInline);
+			else el.style.removeProperty(prop);
+			document.documentElement.style.removeProperty('--jp-mm-reserve');
+		};
+	}
+
 	function build() {
 		if (cleanup) { cleanup(); cleanup = null; }
 		if (isEditableContext()) {
@@ -258,6 +293,8 @@
 		}
 
 
+		var pinned = pinOverride !== null ? pinOverride : settings.pinned === true;
+
 		var nav = document.createElement('nav');
 		nav.id = 'jp-minimap';
 		// Applied in BOTH collapsed and expanded states: shifting only on hover
@@ -269,6 +306,9 @@
 		// never sits on the left, so no gap is added there.
 		var navClasses = [];
 		if (settings.highContrast === true) navClasses.push('jp-mm-hc');
+		// Pinned is just "open, and never told to close": every close path goes
+		// through setOpen, which refuses while pinned.
+		if (pinned) navClasses.push('jp-mm-pinned', 'jp-mm-open');
 		if (settings.side === 'left') {
 			navClasses.push('jp-mm-left');
 			nav.style.left = settings.rightOffset + 'px';
@@ -307,6 +347,7 @@
 		}, { passive: false });
 
 		function setOpen(open) {
+			if (pinned && !open) return;
 			nav.classList.toggle('jp-mm-open', open);
 			// Drop the stepper's anchoring so the collapsed strip re-centres.
 			if (!open) { nav.style.top = ''; nav.style.transform = ''; }
@@ -351,13 +392,14 @@
 		// cursor over #jp-minimap, so the hover-expanded panel never collapses
 		// mid-interaction and no click-to-pin state has to be invented. Pointless
 		// when the note only has one heading level, so it is omitted entirely.
-		var head = null;
+		// The header always exists now: it carries the pin button (issue #6),
+		// and a note with a single heading level still needs a way to pin.
+		var head = document.createElement('div');
+		head.className = 'jp-mm-head';
 		var minusBtn = null;
 		var plusBtn = null;
 		var depthText = null;
 		if (levels.length > 1) {
-			head = document.createElement('div');
-			head.className = 'jp-mm-head';
 			minusBtn = stepButton('-', -1);
 			depthText = document.createElement('span');
 			depthText.className = 'jp-mm-depth';
@@ -365,8 +407,33 @@
 			head.appendChild(minusBtn);
 			head.appendChild(depthText);
 			head.appendChild(plusBtn);
-			list.appendChild(head);
-			renderHead();
+		}
+		head.appendChild(pinButton());
+		list.appendChild(head);
+		renderHead();
+
+		// currentColor SVG rather than the pushpin emoji: an emoji brings its own
+		// colours, and the panel stays within currentColor/neutral rgba so it
+		// reads on every theme (see CLAUDE.md).
+		function pinButton() {
+			var b = document.createElement('span');
+			b.className = 'jp-mm-pin';
+			b.title = pinned ? settings.unpinTip : settings.pinTip;
+			b.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+				+ '<path d="M15 2.5l6.5 6.5-1.8 1.1-2.4-.6-3.6 3.6.5 4.4-1.7 1.7-3.9-3.9-5.1 5.1-1.4-1.4 5.1-5.1-3.9-3.9 1.7-1.7 4.4.5 3.6-3.6-.6-2.4z"/></svg>';
+			// mousedown, like the rows and the stepper: a click would be lost to the
+			// re-render the press can trigger.
+			b.addEventListener('mousedown', function (e) {
+				if (e.button !== 0) return;
+				e.preventDefault();
+				e.stopPropagation();
+				pinOverride = !pinned;
+				if (typeof webviewApi !== 'undefined' && webviewApi.postMessage) {
+					webviewApi.postMessage('joplin-minimap', { type: 'setPinned', value: pinOverride }).catch(function () {});
+				}
+				build();
+			});
+			return b;
 		}
 
 		function stepButton(sign, delta) {
@@ -386,7 +453,7 @@
 		}
 
 		function renderHead() {
-			if (!head) return;
+			if (!depthText) return;
 			var lo = levels[0];
 			depthText.textContent = lo === maxLevel ? ('H' + lo) : ('H' + lo + '-H' + maxLevel);
 			minusBtn.classList.toggle('jp-mm-step-off', maxLevel === lo);
@@ -408,7 +475,8 @@
 			renderHead();
 			applyTodoDots();
 			var afterY = head.getBoundingClientRect().top;
-			if (afterY !== beforeY) {
+			// Pinned is top-anchored, so the header cannot drift there.
+			if (!pinned && afterY !== beforeY) {
 				var box = nav.getBoundingClientRect();
 				var limit = window.innerHeight - box.height - 4;
 				var top = box.top + (beforeY - afterY);
@@ -479,6 +547,14 @@
 		nav.appendChild(list);
 		document.body.appendChild(nav);
 
+		// Pinned: move the note text aside so the sidebar never covers it (the
+		// third point of issue #6). Padding is added on top of whatever the
+		// container already has, and the amount lives in a variable so the print
+		// stylesheet can zero it. Skipped when the viewer is too narrow to leave a
+		// readable column (see reserveSpace).
+		var releaseReserve = null;
+		if (pinned) releaseReserve = reserveSpace(root, nav, settings.side === 'left' ? 'left' : 'right');
+
 		// Open to-dos in a section the stepper has collapsed away roll up to the
 		// nearest visible ancestor. Without this, lowering the depth silently
 		// hides the only signal that a branch still holds unfinished work - which
@@ -512,6 +588,14 @@
 			for (var j = 0; j < items.length; j++) {
 				items[j].classList.toggle('jp-mm-active', j === activeRow);
 			}
+			// A pinned outline follows the reading position like an outline pane.
+			// scrollTop on the list only - scrollIntoView would scroll the note too.
+			if (pinned && items[activeRow]) {
+				var row = items[activeRow];
+				if (row.offsetTop < list.scrollTop || row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight) {
+					list.scrollTop = Math.max(0, row.offsetTop - list.clientHeight * 0.3);
+				}
+			}
 		}
 
 		document.addEventListener('scroll', updateActive, { passive: true, capture: true });
@@ -527,6 +611,7 @@
 		cleanup = function () {
 			document.removeEventListener('scroll', updateActive, { capture: true });
 			if (closeOnOutside) document.removeEventListener('touchstart', closeOnOutside);
+			if (releaseReserve) releaseReserve();
 		};
 	}
 

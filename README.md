@@ -10,6 +10,7 @@ A hover-to-expand table of contents minimap for the [Joplin](https://joplinapp.o
 - **Desktop and Mobile** — Hover on desktop, tap on touch devices: the collapsed strip is a single tap target, rows and buttons grow to finger size when open, and tapping outside or picking a heading closes it again
 - **Hover to Expand** — Move the mouse over the bars and they expand into a full table of contents overlay, indented by level, with long titles ellipsized
 - **Depth Stepper** — `+` / `-` buttons at the top of the expanded panel raise or lower how deep the outline goes, so a long nested note collapses to its top-level structure in one click
+- **Pin as a sidebar** — the pin button at the top of the expanded panel keeps the outline open as a permanent sidebar (Obsidian-style) and moves the note text aside so it is never covered; the active heading stays in view as you read. Also available as a setting
 - **Heading Tiers** — Top-level headings render larger and heavier than nested ones, so the shape of the document is readable at a glance
 - **Click to Jump** — Click any entry to smooth-scroll to that heading
 - **Reading Position** — The section currently in view is highlighted automatically
@@ -56,6 +57,7 @@ Configurable in **Tools → Options → Joplin Minimap**:
 - **Expanded panel width (px)** — maximum width of the hover-expanded table of contents (default 240)
 - **Minimap side** — which edge of the viewer the minimap docks to, right or left (default right)
 - **Default depth** — deepest heading level shown when a note opens; the `+`/`-` buttons change it on the fly (default 6, every level)
+- **Keep outline open (pinned)** — show the outline as a permanent sidebar instead of on hover; the pin button in the panel toggles the same setting (default off)
 - **Edge distance (px)** — gap between the minimap and the viewer edge it sits on (default 6)
 - **Text size (%)** — scales the text in the expanded panel; raise it on high-DPI screens (default 100, under *Advanced*)
 - **High contrast panel** — brighter text and a more solid panel background, using no fixed colours so it still follows your theme (default off, under *Advanced*)

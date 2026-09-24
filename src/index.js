@@ -31,6 +31,10 @@ const SETTINGS_I18N = {
 		maxLevelDesc: 'Deepest heading level shown when a note opens. The +/- buttons at the top of the expanded panel change it on the fly. Default: 6 (every level).',
 		showTodos: 'Show to-do markers',
 		showTodosDesc: 'Show a small red dot before a section\'s tick bar when it contains open to-dos. Default: on.',
+		pinned: 'Keep outline open (pinned)',
+		pinnedDesc: 'Show the expanded outline as a permanent sidebar instead of opening it on hover, and move the note text aside so the outline never covers it. The pin button at the top of the panel toggles this too. Default: off.',
+		pinTip: 'Pin the outline open',
+		unpinTip: 'Unpin (open on hover)',
 	},
 	zh_CN: {
 		minHeadings: '最少标题数',
@@ -51,6 +55,10 @@ const SETTINGS_I18N = {
 		maxLevelDesc: '打开笔记时显示到第几级标题。展开面板顶部的 +/- 按钮可随时调整。默认 6（全部层级）。',
 		showTodos: '显示待办标记',
 		showTodosDesc: '当章节内含未完成待办时，在该章节横线前显示一个小红点提醒。默认开启。',
+		pinned: '常驻展开（钉住）',
+		pinnedDesc: '把展开的目录作为常驻侧栏显示，而不是悬停时才展开，并把正文让开，避免目录遮住文字。面板顶部的钉子按钮也可以切换。默认关闭。',
+		pinTip: '钉住目录',
+		unpinTip: '取消钉住（悬停展开）',
 	},
 	zh_TW: {
 		minHeadings: '最少標題數',
@@ -71,6 +79,10 @@ const SETTINGS_I18N = {
 		maxLevelDesc: '開啟筆記時顯示到第幾級標題。展開面板頂部的 +/- 按鈕可隨時調整。預設 6（全部層級）。',
 		showTodos: '顯示待辦標記',
 		showTodosDesc: '當章節內含未完成待辦時，在該章節橫線前顯示一個小紅點提醒。預設開啟。',
+		pinned: '常駐展開（釘住）',
+		pinnedDesc: '把展開的目錄作為常駐側欄顯示，而不是懸停時才展開，並把內文讓開，避免目錄遮住文字。面板頂部的釘子按鈕也可以切換。預設關閉。',
+		pinTip: '釘住目錄',
+		unpinTip: '取消釘住（懸停展開）',
 	},
 	ru: {
 		minHeadings: 'Минимум заголовков',
@@ -91,6 +103,10 @@ const SETTINGS_I18N = {
 		maxLevelDesc: 'До какого уровня заголовков показывать при открытии заметки. Кнопки +/- вверху развёрнутой панели меняют её на лету. По умолчанию: 6 (все уровни).',
 		showTodos: 'Показывать метки задач',
 		showTodosDesc: 'Показывать маленькую красную точку перед линией раздела, если в нём есть открытые задачи. По умолчанию: вкл.',
+		pinned: 'Закрепить оглавление',
+		pinnedDesc: 'Показывать развёрнутое оглавление как постоянную боковую панель вместо раскрытия при наведении и сдвигать текст заметки, чтобы панель его не закрывала. Кнопка-булавка вверху панели тоже переключает режим. По умолчанию: выкл.',
+		pinTip: 'Закрепить оглавление',
+		unpinTip: 'Открепить (раскрывать при наведении)',
 	},
 	ja_JP: {
 		minHeadings: '最小見出し数',
@@ -111,6 +127,10 @@ const SETTINGS_I18N = {
 		maxLevelDesc: 'ノートを開いたときに表示する見出しの深さ。展開パネル上部の +/- ボタンでいつでも変更できます。既定値：6（すべての階層）。',
 		showTodos: 'ToDoマーカーを表示',
 		showTodosDesc: '未完了のToDoを含むセクションの線の前に小さな赤い点を表示します。既定値：オン。',
+		pinned: '目次を常時表示（ピン留め）',
+		pinnedDesc: '展開した目次をホバー時だけでなく常設のサイドバーとして表示し、本文を横にずらして目次が文字に重ならないようにします。パネル上部のピンボタンでも切り替えられます。既定値：オフ。',
+		pinTip: '目次をピン留め',
+		unpinTip: 'ピン留めを解除（ホバーで展開）',
 	},
 };
 
@@ -213,6 +233,16 @@ joplin.plugins.register({
 				label: t.highContrast,
 				description: t.highContrastDesc,
 			},
+			// Also written by the pin button in the panel (see onMessage below), so
+			// the choice survives note switches and restarts.
+			'minimapPinned': {
+				value: false,
+				type: TYPE_BOOL,
+				section: 'minimap',
+				public: true,
+				label: t.pinned,
+				description: t.pinnedDesc,
+			},
 			'minimapShowTodos': {
 				value: true,
 				type: TYPE_BOOL,
@@ -243,7 +273,16 @@ joplin.plugins.register({
 					fontScale: await joplin.settings.value('minimapFontScale'),
 					highContrast: await joplin.settings.value('minimapHighContrast'),
 					showTodos: await joplin.settings.value('minimapShowTodos'),
+					pinned: await joplin.settings.value('minimapPinned'),
+					pinTip: t.pinTip,
+					unpinTip: t.unpinTip,
 				};
+			}
+			// The pin button in the viewer. Written back so every note - and the
+			// next session - opens in the same mode.
+			if (message && message.type === 'setPinned') {
+				await joplin.settings.setValue('minimapPinned', message.value === true);
+				return true;
 			}
 			return null;
 		});
